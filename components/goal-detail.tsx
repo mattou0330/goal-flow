@@ -333,7 +333,7 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
     try {
       await deleteGoal(goalId)
       setIsDeleteGoalOpen(false)
-      window.location.href = "/"
+      window.dispatchEvent(new CustomEvent("goalDeleted"))
     } catch (error) {
       console.error("Failed to delete goal:", error)
       alert("ゴールの削除に失敗しました")

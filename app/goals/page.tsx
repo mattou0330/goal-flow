@@ -28,14 +28,19 @@ export default function GoalsPage() {
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const loadGoals = async () => {
       try {
         const data = await getGoals()
         setGoals(data)
-        if (data.length > 0 && !selectedGoalId) {
-          setSelectedGoalId(data[0].id)
+        if (data.length > 0) {
+          if (!selectedGoalId || !data.find((g) => g.id === selectedGoalId)) {
+            setSelectedGoalId(data[0].id)
+          }
+        } else {
+          setSelectedGoalId(null)
         }
       } catch (error) {
         console.error("Failed to load goals:", error)
@@ -45,7 +50,18 @@ export default function GoalsPage() {
     }
 
     loadGoals()
-  }, [])
+
+    const handleGoalDeleted = () => {
+      setRefreshKey((prev) => prev + 1)
+      loadGoals()
+    }
+
+    window.addEventListener("goalDeleted", handleGoalDeleted)
+
+    return () => {
+      window.removeEventListener("goalDeleted", handleGoalDeleted)
+    }
+  }, [refreshKey])
 
   const handleCreateGoal = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -162,7 +178,7 @@ export default function GoalsPage() {
           </div>
 
           <div className="lg:col-span-1">
-            <GoalDetail goalId={selectedGoalId} />
+            <GoalDetail key={`${selectedGoalId}-${refreshKey}`} goalId={selectedGoalId} />
           </div>
         </div>
       </main>

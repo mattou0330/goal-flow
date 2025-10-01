@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, X, MousePointerClick } from "lucide-react"
 import { useState } from "react"
-import { isMockMode } from "@/lib/supabase-client" // lib/supabase-clientからインポートするように変更
+import { isMockMode } from "@/lib/supabase-client"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
