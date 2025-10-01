@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
-import { getSupabase, getWeekStartDate, isMockMode, mockWeeklyTargets, mockRecords } from "@/lib/supabase"
+import { getSupabase, getWeekStartDate, isMockMode, mockWeeklyTargets, mockRecords } from "@/lib/supabase-client"
 
 export function WeeklyProgressComponent() {
   const [progress, setProgress] = useState([])

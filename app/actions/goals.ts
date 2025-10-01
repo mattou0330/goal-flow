@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 
 export type Goal = {
   id: string
@@ -113,7 +114,7 @@ export type RecordWithRelations = Record & {
 
 // ゴールの取得
 export async function getGoals() {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -131,7 +132,7 @@ export async function getGoals() {
 
 // 特定のゴールを取得
 export async function getGoal(id: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -151,7 +152,7 @@ export async function createGoal(goal: {
   start_date?: string
   target_date?: string
 }) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -171,7 +172,7 @@ export async function createGoal(goal: {
 // ゴールの更新
 export async function updateGoal(id: string, updates: Partial<Goal>) {
   try {
-    const supabase = createServerClient()
+    const supabase = createServerClient(await cookies())
     const { data, error } = await supabase.from("goals").update(updates).eq("id", id).select().single()
 
     if (error) {
@@ -189,7 +190,7 @@ export async function updateGoal(id: string, updates: Partial<Goal>) {
 
 // ゴールの削除
 export async function deleteGoal(id: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   // 関連するプランを取得
   const { data: plans } = await supabase.from("plans").select("id").eq("goal_id", id)
@@ -229,7 +230,7 @@ export async function deleteGoal(id: string) {
 
 // プランの取得
 export async function getPlans(goalId: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -257,7 +258,7 @@ export async function createPlan(plan: {
   current_value?: number
   unit?: string
 }) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -279,7 +280,7 @@ export async function createPlan(plan: {
 
 // プランの更新
 export async function updatePlan(id: string, updates: Partial<Plan>) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   const { data: oldPlan } = await supabase.from("plans").select("*").eq("id", id).single()
 
@@ -320,7 +321,7 @@ export async function updatePlan(id: string, updates: Partial<Plan>) {
 
 // プランの削除
 export async function deletePlan(id: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   await recordPlanHistory(id, "deleted", [{ field: "削除", oldValue: "存在", newValue: null }])
 
@@ -332,7 +333,7 @@ export async function deletePlan(id: string) {
 
 // 記録の取得
 export async function getGoalLogs(goalId: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -355,7 +356,7 @@ export async function createGoalLog(log: {
   content: string
   log_type?: "note" | "milestone" | "issue" | "decision"
 }) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -374,7 +375,7 @@ export async function createGoalLog(log: {
 
 // 週次目標の取得
 export async function getGoalWeeklyTargets(goalId: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -397,7 +398,7 @@ export async function createGoalWeeklyTarget(target: {
   week_start: string
   target: string
 }) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -416,7 +417,7 @@ export async function createGoalWeeklyTarget(target: {
 
 // 週次目標の更新
 export async function updateGoalWeeklyTarget(id: string, updates: Partial<GoalWeeklyTarget>) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const { data, error } = await supabase.from("goal_weekly_targets").update(updates).eq("id", id).select().single()
 
   if (error) throw error
@@ -426,7 +427,7 @@ export async function updateGoalWeeklyTarget(id: string, updates: Partial<GoalWe
 
 // レビューの取得
 export async function getGoalReviews(goalId: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -452,7 +453,7 @@ export async function createGoalReview(review: {
   next_actions?: string
   rating?: number
 }) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -471,7 +472,7 @@ export async function createGoalReview(review: {
 
 export async function reorderGoal(goalId: string, newParentId: string | null, targetPosition: number) {
   try {
-    const supabase = createServerClient()
+    const supabase = createServerClient(await cookies())
 
     // reorder_goals関数を呼び出す
     const { error } = await supabase.rpc("reorder_goals", {
@@ -497,7 +498,7 @@ async function recordPlanHistory(
   changeType: string,
   changes: { field: string; oldValue: any; newValue: any }[],
 ) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   const historyRecords = changes.map((change) => ({
     plan_id: planId,
@@ -516,7 +517,7 @@ async function recordPlanHistory(
 
 export async function getPlanHistory(planId: string) {
   try {
-    const supabase = createServerClient()
+    const supabase = createServerClient(await cookies())
     const { data, error } = await supabase
       .from("plan_history")
       .select("*")
@@ -542,7 +543,7 @@ export async function getPlanHistory(planId: string) {
 
 // 週次目標の取得（プラン別）
 export async function getWeeklyGoalsByPlan(planId: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const { data, error } = await supabase
     .from("weekly_goals")
     .select("*")
@@ -550,12 +551,12 @@ export async function getWeeklyGoalsByPlan(planId: string) {
     .order("week_start_date", { ascending: false })
 
   if (error) throw error
-  return data as WeeklyGoal[]
+  return data as (WeeklyGoal & { plans: Plan })[]
 }
 
 // 週次目標の取得（今週分）
 export async function getCurrentWeekGoals() {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -601,7 +602,7 @@ export async function createWeeklyGoal(weeklyGoal: {
   console.log("[v0] Creating weekly goal:", weeklyGoal)
 
   try {
-    const supabase = createServerClient()
+    const supabase = createServerClient(await cookies())
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -634,7 +635,7 @@ export async function createWeeklyGoal(weeklyGoal: {
 
 // 週次目標の更新
 export async function updateWeeklyGoal(id: string, updates: Partial<WeeklyGoal>) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const { data, error } = await supabase
     .from("weekly_goals")
     .update({
@@ -652,7 +653,7 @@ export async function updateWeeklyGoal(id: string, updates: Partial<WeeklyGoal>)
 
 // 週次目標の削除
 export async function deleteWeeklyGoal(id: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const { error } = await supabase.from("weekly_goals").delete().eq("id", id)
 
   if (error) throw error
@@ -661,7 +662,7 @@ export async function deleteWeeklyGoal(id: string) {
 
 // 週次目標の取得（ゴール別）
 export async function getWeeklyGoalsByGoal(goalId: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -699,7 +700,7 @@ export async function getWeeklyGoalsByGoal(goalId: string) {
 }
 
 export async function getActivePlans() {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -724,7 +725,7 @@ export async function getActivePlans() {
 }
 
 export async function getRecentRecords(limit = 10, offset = 0) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -845,7 +846,7 @@ export async function addRecord(record: {
   plan_id?: string
   performed_at?: string
 }) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -946,7 +947,7 @@ export async function updateRecord(
     performed_at?: string
   },
 ) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   const { data: oldRecord } = await supabase.from("records").select("*").eq("id", id).single()
 
@@ -1033,7 +1034,7 @@ export async function updateRecord(
 }
 
 export async function deleteRecord(id: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   const { data: record } = await supabase.from("records").select("*").eq("id", id).single()
 
@@ -1111,7 +1112,7 @@ export async function deleteRecord(id: string) {
 }
 
 export async function getGoalDeletionInfo(id: string) {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   const { data: plans } = await supabase.from("plans").select("id").eq("goal_id", id)
 

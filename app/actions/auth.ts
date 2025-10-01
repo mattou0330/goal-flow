@@ -3,6 +3,7 @@
 import { createServerClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 
 export async function signUp(formData: FormData) {
   const email = formData.get("email") as string
@@ -13,7 +14,7 @@ export async function signUp(formData: FormData) {
     return { error: "メールアドレスとパスワードを入力してください" }
   }
 
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -47,7 +48,7 @@ export async function signIn(formData: FormData) {
     return { error: "メールアドレスとパスワードを入力してください" }
   }
 
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -63,14 +64,14 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signOut() {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   await supabase.auth.signOut()
   revalidatePath("/", "layout")
   redirect("/login")
 }
 
 export async function getUser() {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()

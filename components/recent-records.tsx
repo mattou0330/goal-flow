@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Clock, Pencil, Trash2, X, Check, ChevronRight, ChevronLeft } from "lucide-react"
 import { useEffect, useState } from "react"
-import { isMockMode, mockRecords } from "@/lib/supabase"
+import { isMockMode, mockRecords } from "@/lib/supabase-client"
 import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
