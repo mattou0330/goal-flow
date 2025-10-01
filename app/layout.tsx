@@ -11,8 +11,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
+  title: "GoalFlow",
+  description: "目標達成を支援するダッシュボード",
   generator: "v0.app",
 }
 
