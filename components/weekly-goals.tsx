@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +16,7 @@ import {
   type Plan,
 } from "@/app/actions/goals"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
 
 type WeeklyGoalWithPlan = WeeklyGoal & { plans: Plan }
 
@@ -26,6 +29,17 @@ export function WeeklyGoals() {
 
   useEffect(() => {
     loadGoals()
+
+    const handleRecordAdded = () => {
+      console.log("[v0] Record added event received in WeeklyGoals")
+      loadGoals()
+    }
+
+    window.addEventListener("recordAdded", handleRecordAdded)
+
+    return () => {
+      window.removeEventListener("recordAdded", handleRecordAdded)
+    }
   }, [])
 
   const loadGoals = async () => {
@@ -99,6 +113,20 @@ export function WeeklyGoals() {
     }
   }
 
+  const handleDragStart = (e: React.DragEvent, goal: WeeklyGoalWithPlan) => {
+    e.dataTransfer.effectAllowed = "copy"
+    e.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({
+        type: "weekly_goal",
+        id: goal.id,
+        title: goal.plans.title,
+        unit: goal.plans.unit,
+        planId: goal.plan_id,
+      }),
+    )
+  }
+
   if (loading) {
     return (
       <Card className="rounded-lg shadow-sm border-border">
@@ -124,10 +152,22 @@ export function WeeklyGoals() {
             const isEditing = editingGoal === goal.id
 
             return (
-              <div key={goal.id} className="p-3 rounded-lg bg-muted/50 space-y-2 group">
+              <div
+                key={goal.id}
+                draggable={!isEditing}
+                onDragStart={(e) => handleDragStart(e, goal)}
+                className="p-3 rounded-lg bg-muted/50 space-y-2 group cursor-move hover:bg-muted transition-colors"
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="text-sm font-medium">{goal.plans.title}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-medium">{goal.plans.title}</div>
+                      {goal.plans.unit && (
+                        <Badge variant="secondary" className="text-xs">
+                          {goal.plans.unit}
+                        </Badge>
+                      )}
+                    </div>
                     {goal.notes && <div className="text-xs text-muted-foreground mt-1">{goal.notes}</div>}
                   </div>
                   <Button

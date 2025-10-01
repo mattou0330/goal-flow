@@ -16,6 +16,7 @@ export type Goal = {
   display_order: number // 順序フィールドを追加
   created_at: string
   updated_at: string
+  user_id: string // ユーザー認証を追加
 }
 
 export type Plan = {
@@ -32,6 +33,7 @@ export type Plan = {
   unit: string | null // 数値化フィールドを追加
   created_at: string
   updated_at: string
+  user_id: string // ユーザー認証を追加
 }
 
 export type GoalLog = {
@@ -40,6 +42,7 @@ export type GoalLog = {
   content: string
   log_type: "note" | "milestone" | "issue" | "decision"
   created_at: string
+  user_id: string // ユーザー認証を追加
 }
 
 export type GoalWeeklyTarget = {
@@ -51,6 +54,7 @@ export type GoalWeeklyTarget = {
   completed_date: string | null
   created_at: string
   updated_at: string
+  user_id: string // ユーザー認証を追加
 }
 
 export type GoalReview = {
@@ -62,6 +66,7 @@ export type GoalReview = {
   next_actions: string | null
   rating: number | null
   created_at: string
+  user_id: string // ユーザー認証を追加
 }
 
 export type PlanHistory = {
@@ -86,12 +91,39 @@ export type WeeklyGoal = {
   notes: string | null
   created_at: string
   updated_at: string
+  user_id: string // ユーザー認証を追加
+}
+
+export type Record = {
+  id: string
+  quantity: number
+  unit: string
+  memo: string | null
+  performed_at: string
+  created_at: string
+  weekly_goal_id: string | null
+  plan_id: string | null
+  user_id: string // ユーザー認証を追加
+}
+
+export type RecordWithRelations = Record & {
+  weekly_goals?: WeeklyGoal & { plans: Plan & { goals: Goal } }
+  plans?: Plan & { goals: Goal }
 }
 
 // ゴールの取得
 export async function getGoals() {
   const supabase = createServerClient()
-  const { data, error } = await supabase.from("goals").select("*").order("display_order", { ascending: true })
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("goals")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("display_order", { ascending: true })
 
   if (error) throw error
   return data as Goal[]
@@ -100,7 +132,12 @@ export async function getGoals() {
 // 特定のゴールを取得
 export async function getGoal(id: string) {
   const supabase = createServerClient()
-  const { data, error } = await supabase.from("goals").select("*").eq("id", id).single()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase.from("goals").select("*").eq("id", id).eq("user_id", user.id).single()
 
   if (error) throw error
   return data as Goal
@@ -115,7 +152,16 @@ export async function createGoal(goal: {
   target_date?: string
 }) {
   const supabase = createServerClient()
-  const { data, error } = await supabase.from("goals").insert(goal).select().single()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("goals")
+    .insert({ ...goal, user_id: user.id })
+    .select()
+    .single()
 
   if (error) throw error
   revalidatePath("/goals")
@@ -144,19 +190,56 @@ export async function updateGoal(id: string, updates: Partial<Goal>) {
 // ゴールの削除
 export async function deleteGoal(id: string) {
   const supabase = createServerClient()
+
+  // 関連するプランを取得
+  const { data: plans } = await supabase.from("plans").select("id").eq("goal_id", id)
+
+  if (plans && plans.length > 0) {
+    const planIds = plans.map((p) => p.id)
+
+    // 各プランに関連する週次目標を削除
+    await supabase.from("weekly_goals").delete().in("plan_id", planIds)
+
+    // 各プランに関連する記録を削除
+    await supabase.from("records").delete().in("plan_id", planIds)
+
+    // プランの履歴を削除
+    await supabase.from("plan_history").delete().in("plan_id", planIds)
+
+    // プランを削除
+    await supabase.from("plans").delete().in("id", planIds)
+  }
+
+  // ゴールに関連する記録を削除
+  await supabase.from("goal_logs").delete().eq("goal_id", id)
+
+  // ゴールに関連する週次目標を削除
+  await supabase.from("goal_weekly_targets").delete().eq("goal_id", id)
+
+  // ゴールに関連するレビューを削除
+  await supabase.from("goal_reviews").delete().eq("goal_id", id)
+
+  // ゴールを削除
   const { error } = await supabase.from("goals").delete().eq("id", id)
 
   if (error) throw error
   revalidatePath("/goals")
+  revalidatePath("/")
 }
 
 // プランの取得
 export async function getPlans(goalId: string) {
   const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
   const { data, error } = await supabase
     .from("plans")
     .select("*")
     .eq("goal_id", goalId)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
   if (error) throw error
@@ -170,12 +253,21 @@ export async function createPlan(plan: {
   description?: string
   priority?: "low" | "medium" | "high"
   due_date?: string
-  target_value?: number // 数値化フィールドを追加
-  current_value?: number // 数値化フィールドを追加
-  unit?: string // 数値化フィールドを追加
+  target_value?: number
+  current_value?: number
+  unit?: string
 }) {
   const supabase = createServerClient()
-  const { data, error } = await supabase.from("plans").insert(plan).select().single()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("plans")
+    .insert({ ...plan, user_id: user.id })
+    .select()
+    .single()
 
   if (error) throw error
 
@@ -241,10 +333,16 @@ export async function deletePlan(id: string) {
 // 記録の取得
 export async function getGoalLogs(goalId: string) {
   const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
   const { data, error } = await supabase
     .from("goal_logs")
     .select("*")
     .eq("goal_id", goalId)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
   if (error) throw error
@@ -258,7 +356,16 @@ export async function createGoalLog(log: {
   log_type?: "note" | "milestone" | "issue" | "decision"
 }) {
   const supabase = createServerClient()
-  const { data, error } = await supabase.from("goal_logs").insert(log).select().single()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("goal_logs")
+    .insert({ ...log, user_id: user.id })
+    .select()
+    .single()
 
   if (error) throw error
   revalidatePath("/goals")
@@ -268,10 +375,16 @@ export async function createGoalLog(log: {
 // 週次目標の取得
 export async function getGoalWeeklyTargets(goalId: string) {
   const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
   const { data, error } = await supabase
     .from("goal_weekly_targets")
     .select("*")
     .eq("goal_id", goalId)
+    .eq("user_id", user.id)
     .order("week_start", { ascending: false })
 
   if (error) throw error
@@ -285,7 +398,16 @@ export async function createGoalWeeklyTarget(target: {
   target: string
 }) {
   const supabase = createServerClient()
-  const { data, error } = await supabase.from("goal_weekly_targets").insert(target).select().single()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("goal_weekly_targets")
+    .insert({ ...target, user_id: user.id })
+    .select()
+    .single()
 
   if (error) throw error
   revalidatePath("/goals")
@@ -305,10 +427,16 @@ export async function updateGoalWeeklyTarget(id: string, updates: Partial<GoalWe
 // レビューの取得
 export async function getGoalReviews(goalId: string) {
   const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
   const { data, error } = await supabase
     .from("goal_reviews")
     .select("*")
     .eq("goal_id", goalId)
+    .eq("user_id", user.id)
     .order("review_date", { ascending: false })
 
   if (error) throw error
@@ -325,7 +453,16 @@ export async function createGoalReview(review: {
   rating?: number
 }) {
   const supabase = createServerClient()
-  const { data, error } = await supabase.from("goal_reviews").insert(review).select().single()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("goal_reviews")
+    .insert({ ...review, user_id: user.id })
+    .select()
+    .single()
 
   if (error) throw error
   revalidatePath("/goals")
@@ -419,11 +556,15 @@ export async function getWeeklyGoalsByPlan(planId: string) {
 // 週次目標の取得（今週分）
 export async function getCurrentWeekGoals() {
   const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
 
   // 今週の月曜日を計算
   const now = new Date()
   const dayOfWeek = now.getDay()
-  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // 日曜日の場合は前週の月曜日
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
   const monday = new Date(now)
   monday.setDate(now.getDate() + diff)
   monday.setHours(0, 0, 0, 0)
@@ -443,6 +584,7 @@ export async function getCurrentWeekGoals() {
       )
     `)
     .eq("week_start_date", weekStart)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
   if (error) throw error
@@ -460,10 +602,16 @@ export async function createWeeklyGoal(weeklyGoal: {
 
   try {
     const supabase = createServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("認証が必要です")
+
     const { data, error } = await supabase
       .from("weekly_goals")
       .insert({
         ...weeklyGoal,
+        user_id: user.id,
         current_value: 0,
         status: "active",
       })
@@ -509,4 +657,487 @@ export async function deleteWeeklyGoal(id: string) {
 
   if (error) throw error
   revalidatePath("/goals")
+}
+
+// 週次目標の取得（ゴール別）
+export async function getWeeklyGoalsByGoal(goalId: string) {
+  const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data: plans } = await supabase.from("plans").select("id").eq("goal_id", goalId).eq("user_id", user.id)
+
+  if (plans && plans.length > 0) {
+    const planIds = plans.map((p) => p.id)
+
+    const { data, error } = await supabase
+      .from("weekly_goals")
+      .select(`
+        *,
+        plans:plan_id (
+          id,
+          title,
+          unit,
+          target_value,
+          goals:goal_id (
+            id,
+            title
+          )
+        )
+      `)
+      .in("plan_id", planIds)
+      .eq("user_id", user.id)
+      .order("week_start_date", { ascending: false })
+
+    if (error) throw error
+    return data as (WeeklyGoal & { plans: Plan & { goals: Goal } })[]
+  }
+
+  return []
+}
+
+export async function getActivePlans() {
+  const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("plans")
+    .select(`
+      *,
+      goals:goal_id (
+        id,
+        title
+      )
+    `)
+    .in("status", ["pending", "in_progress"])
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(10)
+
+  if (error) throw error
+  return data as (Plan & { goals: Goal })[]
+}
+
+export async function getRecentRecords(limit = 10, offset = 0) {
+  const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data: records, error } = await supabase
+    .from("records")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("performed_at", { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) {
+    console.error("[v0] Error loading records:", error)
+    throw error
+  }
+
+  if (!records || records.length === 0) {
+    return []
+  }
+
+  // 週次目標IDとプランIDを収集
+  const weeklyGoalIds = records
+    .filter((r) => r.weekly_goal_id)
+    .map((r) => r.weekly_goal_id)
+    .filter((id): id is string => id !== null)
+
+  const planIds = records
+    .filter((r) => r.plan_id)
+    .map((r) => r.plan_id)
+    .filter((id): id is string => id !== null)
+
+  // 週次目標を取得
+  const weeklyGoalsMap = new Map()
+  if (weeklyGoalIds.length > 0) {
+    const { data: weeklyGoals } = await supabase
+      .from("weekly_goals")
+      .select("id, target_value, current_value, plan_id")
+      .in("id", weeklyGoalIds)
+
+    if (weeklyGoals) {
+      weeklyGoals.forEach((wg) => weeklyGoalsMap.set(wg.id, wg))
+
+      // 週次目標に関連するプランIDも収集
+      weeklyGoals.forEach((wg) => {
+        if (wg.plan_id && !planIds.includes(wg.plan_id)) {
+          planIds.push(wg.plan_id)
+        }
+      })
+    }
+  }
+
+  // プランを取得
+  const plansMap = new Map()
+  if (planIds.length > 0) {
+    const { data: plans } = await supabase.from("plans").select("id, title, unit, goal_id").in("id", planIds)
+
+    if (plans) {
+      plans.forEach((p) => plansMap.set(p.id, p))
+
+      // プランに関連する目標IDを収集
+      const goalIds = plans.map((p) => p.goal_id).filter((id): id is string => id !== null)
+
+      // 目標を取得
+      if (goalIds.length > 0) {
+        const { data: goals } = await supabase.from("goals").select("id, title").in("id", goalIds)
+
+        if (goals) {
+          const goalsMap = new Map()
+          goals.forEach((g) => goalsMap.set(g.id, g))
+
+          // プランに目標情報を追加
+          plans.forEach((p) => {
+            if (p.goal_id) {
+              const goal = goalsMap.get(p.goal_id)
+              if (goal) {
+                plansMap.set(p.id, { ...p, goals: goal })
+              }
+            }
+          })
+        }
+      }
+    }
+  }
+
+  // データを結合
+  const recordsWithRelations = records.map((record) => {
+    const result: RecordWithRelations = { ...record }
+
+    if (record.weekly_goal_id) {
+      const weeklyGoal = weeklyGoalsMap.get(record.weekly_goal_id)
+      if (weeklyGoal) {
+        const plan = plansMap.get(weeklyGoal.plan_id)
+        if (plan) {
+          result.weekly_goals = { ...weeklyGoal, plans: plan }
+        }
+      }
+    }
+
+    if (record.plan_id) {
+      const plan = plansMap.get(record.plan_id)
+      if (plan) {
+        result.plans = plan
+      }
+    }
+
+    return result
+  })
+
+  return recordsWithRelations
+}
+
+export async function addRecord(record: {
+  quantity: number
+  unit: string
+  memo?: string
+  weekly_goal_id?: string
+  plan_id?: string
+  performed_at?: string
+}) {
+  const supabase = createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("records")
+    .insert({
+      quantity: record.quantity,
+      unit: record.unit,
+      memo: record.memo || null,
+      weekly_goal_id: record.weekly_goal_id || null,
+      plan_id: record.plan_id || null,
+      performed_at: record.performed_at || new Date().toISOString(),
+      user_id: user.id,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+
+  if (record.weekly_goal_id) {
+    const { data: weeklyGoalData } = await supabase
+      .from("weekly_goals")
+      .select("current_value, target_value, plan_id")
+      .eq("id", record.weekly_goal_id)
+      .single()
+
+    if (weeklyGoalData) {
+      const { data: planData } = await supabase.from("plans").select("unit").eq("id", weeklyGoalData.plan_id).single()
+
+      if (planData) {
+        let quantityToAdd = record.quantity
+        const recordUnit = record.unit
+        const planUnit = planData.unit
+
+        if (recordUnit === "分" && planUnit === "時間") {
+          quantityToAdd = record.quantity / 60
+        } else if (recordUnit === "時間" && planUnit === "分") {
+          quantityToAdd = record.quantity * 60
+        }
+
+        const newCurrentValue = (weeklyGoalData.current_value || 0) + quantityToAdd
+        const newStatus = newCurrentValue >= weeklyGoalData.target_value ? "completed" : "active"
+
+        await supabase
+          .from("weekly_goals")
+          .update({
+            current_value: newCurrentValue,
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", record.weekly_goal_id)
+      }
+    }
+  }
+
+  if (record.plan_id) {
+    const { data: planData } = await supabase
+      .from("plans")
+      .select("current_value, unit")
+      .eq("id", record.plan_id)
+      .single()
+
+    if (planData) {
+      let quantityToAdd = record.quantity
+      const recordUnit = record.unit
+      const planUnit = planData.unit
+
+      if (recordUnit === "分" && planUnit === "時間") {
+        quantityToAdd = record.quantity / 60
+      } else if (recordUnit === "時間" && planUnit === "分") {
+        quantityToAdd = record.quantity * 60
+      }
+
+      const newCurrentValue = (planData.current_value || 0) + quantityToAdd
+
+      await supabase
+        .from("plans")
+        .update({
+          current_value: newCurrentValue,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", record.plan_id)
+    }
+  }
+
+  revalidatePath("/")
+  return data as Record
+}
+
+export async function updateRecord(
+  id: string,
+  updates: {
+    quantity?: number
+    unit?: string
+    memo?: string
+    performed_at?: string
+  },
+) {
+  const supabase = createServerClient()
+
+  const { data: oldRecord } = await supabase.from("records").select("*").eq("id", id).single()
+
+  const { data, error } = await supabase.from("records").update(updates).eq("id", id).select().single()
+
+  if (error) throw error
+
+  if (oldRecord && oldRecord.weekly_goal_id && updates.quantity !== undefined) {
+    const { data: weeklyGoalData } = await supabase
+      .from("weekly_goals")
+      .select("current_value, target_value, plan_id")
+      .eq("id", oldRecord.weekly_goal_id)
+      .single()
+
+    if (weeklyGoalData) {
+      const { data: planData } = await supabase.from("plans").select("unit").eq("id", weeklyGoalData.plan_id).single()
+
+      if (planData) {
+        let oldQuantity = oldRecord.quantity
+        let newQuantity = updates.quantity
+        const recordUnit = oldRecord.unit
+        const planUnit = planData.unit
+
+        if (recordUnit === "分" && planUnit === "時間") {
+          oldQuantity = oldRecord.quantity / 60
+          newQuantity = updates.quantity / 60
+        } else if (recordUnit === "時間" && planUnit === "分") {
+          oldQuantity = oldRecord.quantity * 60
+          newQuantity = updates.quantity * 60
+        }
+
+        const quantityDiff = newQuantity - oldQuantity
+        const newCurrentValue = (weeklyGoalData.current_value || 0) + quantityDiff
+        const newStatus = newCurrentValue >= weeklyGoalData.target_value ? "completed" : "active"
+
+        await supabase
+          .from("weekly_goals")
+          .update({
+            current_value: newCurrentValue,
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", oldRecord.weekly_goal_id)
+      }
+    }
+  }
+
+  if (oldRecord && oldRecord.plan_id && updates.quantity !== undefined) {
+    const { data: planData } = await supabase
+      .from("plans")
+      .select("current_value, unit")
+      .eq("id", oldRecord.plan_id)
+      .single()
+
+    if (planData) {
+      let oldQuantity = oldRecord.quantity
+      let newQuantity = updates.quantity
+      const recordUnit = oldRecord.unit
+      const planUnit = planData.unit
+
+      if (recordUnit === "分" && planUnit === "時間") {
+        oldQuantity = oldRecord.quantity / 60
+        newQuantity = updates.quantity / 60
+      } else if (recordUnit === "時間" && planUnit === "分") {
+        oldQuantity = oldRecord.quantity * 60
+        newQuantity = updates.quantity * 60
+      }
+
+      const quantityDiff = newQuantity - oldQuantity
+      const newCurrentValue = (planData.current_value || 0) + quantityDiff
+
+      await supabase
+        .from("plans")
+        .update({
+          current_value: newCurrentValue,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", oldRecord.plan_id)
+    }
+  }
+
+  revalidatePath("/")
+  return data as Record
+}
+
+export async function deleteRecord(id: string) {
+  const supabase = createServerClient()
+
+  const { data: record } = await supabase.from("records").select("*").eq("id", id).single()
+
+  const { error } = await supabase.from("records").delete().eq("id", id)
+
+  if (error) throw error
+
+  if (record && record.weekly_goal_id) {
+    const { data: weeklyGoalData } = await supabase
+      .from("weekly_goals")
+      .select("current_value, target_value, plan_id")
+      .eq("id", record.weekly_goal_id)
+      .single()
+
+    if (weeklyGoalData) {
+      const { data: planData } = await supabase.from("plans").select("unit").eq("id", weeklyGoalData.plan_id).single()
+
+      if (planData) {
+        let quantityToSubtract = record.quantity
+        const recordUnit = record.unit
+        const planUnit = planData.unit
+
+        if (recordUnit === "分" && planUnit === "時間") {
+          quantityToSubtract = record.quantity / 60
+        } else if (recordUnit === "時間" && planUnit === "分") {
+          quantityToSubtract = record.quantity * 60
+        }
+
+        const newCurrentValue = Math.max(0, (weeklyGoalData.current_value || 0) - quantityToSubtract)
+        const newStatus = newCurrentValue >= weeklyGoalData.target_value ? "completed" : "active"
+
+        await supabase
+          .from("weekly_goals")
+          .update({
+            current_value: newCurrentValue,
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", record.weekly_goal_id)
+      }
+    }
+  }
+
+  if (record && record.plan_id) {
+    const { data: planData } = await supabase
+      .from("plans")
+      .select("current_value, unit")
+      .eq("id", record.plan_id)
+      .single()
+
+    if (planData) {
+      let quantityToSubtract = record.quantity
+      const recordUnit = record.unit
+      const planUnit = planData.unit
+
+      if (recordUnit === "分" && planUnit === "時間") {
+        quantityToSubtract = record.quantity / 60
+      } else if (recordUnit === "時間" && planUnit === "分") {
+        quantityToSubtract = record.quantity * 60
+      }
+
+      const newCurrentValue = Math.max(0, (planData.current_value || 0) - quantityToSubtract)
+
+      await supabase
+        .from("plans")
+        .update({
+          current_value: newCurrentValue,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", record.plan_id)
+    }
+  }
+
+  revalidatePath("/")
+}
+
+export async function getGoalDeletionInfo(id: string) {
+  const supabase = createServerClient()
+
+  const { data: plans } = await supabase.from("plans").select("id").eq("goal_id", id)
+
+  let weeklyGoalsCount = 0
+  let recordsCount = 0
+
+  if (plans && plans.length > 0) {
+    const planIds = plans.map((p) => p.id)
+
+    const { count: wgCount } = await supabase
+      .from("weekly_goals")
+      .select("*", { count: "exact", head: true })
+      .in("plan_id", planIds)
+
+    const { count: recCount } = await supabase
+      .from("records")
+      .select("*", { count: "exact", head: true })
+      .in("plan_id", planIds)
+
+    weeklyGoalsCount = wgCount || 0
+    recordsCount = recCount || 0
+  }
+
+  return {
+    plansCount: plans?.length || 0,
+    weeklyGoalsCount,
+    recordsCount,
+  }
 }

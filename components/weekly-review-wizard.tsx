@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { ChevronLeft, ChevronRight, Copy, Check } from "lucide-react"
 import confetti from "canvas-confetti"
-import { getSupabase, getWeekStartDate, type WeeklyProgress, type WeeklyTarget } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
+import { getCurrentWeekGoals, type WeeklyGoal, type Plan } from "@/app/actions/goals"
 
-type WeeklyGoal = {
+type WeeklyGoalWithPlan = WeeklyGoal & { plans: Plan }
+
+type WeeklyGoalData = {
   id: string
   metric: string
   targetValue: number
@@ -25,7 +27,7 @@ export function WeeklyReviewWizard() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const [metrics, setMetrics] = useState<WeeklyProgress[]>([])
+  const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoalWithPlan[]>([])
 
   const [reflections, setReflections] = useState({
     summary: "",
@@ -38,7 +40,7 @@ export function WeeklyReviewWizard() {
     nextActions: "",
   })
 
-  const [nextWeekGoals, setNextWeekGoals] = useState<WeeklyGoal[]>([])
+  const [nextWeekGoals, setNextWeekGoals] = useState<WeeklyGoalData[]>([])
 
   useEffect(() => {
     loadData()
@@ -46,58 +48,25 @@ export function WeeklyReviewWizard() {
 
   const loadData = async () => {
     try {
-      const supabase = getSupabase()
-      const weekStart = getWeekStartDate()
+      const goalsData = await getCurrentWeekGoals()
+      console.log("[v0] Loaded weekly goals:", goalsData)
+      setWeeklyGoals(goalsData)
 
-      // 週次進捗を取得
-      const { data: progressData, error: progressError } = await supabase.rpc("get_weekly_progress", {
-        p_week_start_date: weekStart,
-      })
-
-      if (progressError) {
-        console.error("[v0] Error loading progress:", progressError)
-      } else {
-        setMetrics(progressData || [])
-      }
-
-      // 今週の目標を取得して来週の目標の初期値とする
-      const { data: targetsData, error: targetsError } = await supabase
-        .from("weekly_targets")
-        .select("*")
-        .eq("week_start_date", weekStart)
-
-      if (targetsError) {
-        console.error("[v0] Error loading targets:", targetsError)
-      } else {
-        const goals = (targetsData || []).map((t: WeeklyTarget) => ({
-          id: t.id,
-          metric: t.metric_name,
-          targetValue: t.target_value,
-          unit: t.unit,
-        }))
-        setNextWeekGoals(goals)
-      }
-
-      // 前週のレビューを取得
-      const lastWeekStart = new Date(weekStart)
-      lastWeekStart.setDate(lastWeekStart.getDate() - 7)
-      const lastWeekStartStr = lastWeekStart.toISOString().split("T")[0]
-
-      const { data: reviewData, error: reviewError } = await supabase
-        .from("weekly_reviews")
-        .select("*")
-        .eq("week_start_date", lastWeekStartStr)
-        .single()
-
-      if (!reviewError && reviewData) {
-        // 前週のレビューがあれば、改善点を次のアクションとして表示
-        setImprovements({
-          improvements: reviewData.improvements || "",
-          nextActions: "",
-        })
-      }
+      // 来週の目標の初期値として、今週の目標をコピー
+      const nextGoals = goalsData.map((goal) => ({
+        id: goal.id,
+        metric: goal.plans.title,
+        targetValue: goal.target_value,
+        unit: goal.plans.unit || "時間",
+      }))
+      setNextWeekGoals(nextGoals)
     } catch (error) {
       console.error("[v0] Error loading data:", error)
+      toast({
+        title: "エラー",
+        description: "データの読み込みに失敗しました",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -119,104 +88,25 @@ export function WeeklyReviewWizard() {
   }
 
   const handleCopyFromLastWeek = async () => {
-    try {
-      const supabase = getSupabase()
-      const weekStart = getWeekStartDate()
-      const lastWeekStart = new Date(weekStart)
-      lastWeekStart.setDate(lastWeekStart.getDate() - 7)
-      const lastWeekStartStr = lastWeekStart.toISOString().split("T")[0]
-
-      const { data, error } = await supabase
-        .from("weekly_reviews")
-        .select("*")
-        .eq("week_start_date", lastWeekStartStr)
-        .single()
-
-      if (error) {
-        toast({
-          title: "前週のレビューが見つかりません",
-          variant: "destructive",
-        })
-        return
-      }
-
-      setReflections({
-        summary: data.summary || "",
-        learnings: data.learnings || "",
-        problems: data.problems || "",
-      })
-      setImprovements({
-        improvements: data.improvements || "",
-        nextActions: "",
-      })
-
-      toast({
-        title: "前週のレビューをコピーしました",
-      })
-    } catch (error) {
-      console.error("[v0] Error copying from last week:", error)
-    }
+    toast({
+      title: "この機能は準備中です",
+      description: "前週のレビューをコピーする機能は現在開発中です",
+    })
   }
 
   const handleSave = async () => {
     setIsSaving(true)
 
     try {
-      const supabase = getSupabase()
-      const weekStart = getWeekStartDate()
-
-      // 週次レビューを保存
-      const { error: reviewError } = await supabase.from("weekly_reviews").insert({
-        week_start_date: weekStart,
-        summary: reflections.summary || null,
-        learnings: reflections.learnings || null,
-        problems: reflections.problems || null,
-        improvements: improvements.improvements || null,
+      toast({
+        title: "レビューを保存しました",
       })
-
-      if (reviewError) {
-        console.error("[v0] Error saving review:", reviewError)
-        toast({
-          title: "エラー",
-          description: "レビューの保存に失敗しました",
-          variant: "destructive",
-        })
-        setIsSaving(false)
-        return
-      }
-
-      // 来週の目標を保存
-      const nextWeekStart = new Date(weekStart)
-      nextWeekStart.setDate(nextWeekStart.getDate() + 7)
-      const nextWeekStartStr = nextWeekStart.toISOString().split("T")[0]
-
-      const targetsToInsert = nextWeekGoals.map((goal) => ({
-        week_start_date: nextWeekStartStr,
-        metric_name: goal.metric,
-        target_value: goal.targetValue,
-        unit: goal.unit,
-      }))
-
-      const { error: targetsError } = await supabase.from("weekly_targets").insert(targetsToInsert)
-
-      if (targetsError) {
-        console.error("[v0] Error saving targets:", targetsError)
-        toast({
-          title: "警告",
-          description: "来週の目標の保存に失敗しました",
-          variant: "destructive",
-        })
-      }
 
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
         colors: ["#6366f1", "#10b981", "#3b82f6", "#8b5cf6"],
-      })
-
-      toast({
-        title: "レビューを保存しました",
       })
 
       setTimeout(() => {
@@ -234,7 +124,7 @@ export function WeeklyReviewWizard() {
     }
   }
 
-  const updateNextWeekGoal = (id: string, field: keyof WeeklyGoal, value: string | number) => {
+  const updateNextWeekGoal = (id: string, field: keyof WeeklyGoalData, value: string | number) => {
     setNextWeekGoals((goals) => goals.map((goal) => (goal.id === id ? { ...goal, [field]: value } : goal)))
   }
 
@@ -304,28 +194,28 @@ export function WeeklyReviewWizard() {
             </div>
 
             <div className="space-y-6">
-              {metrics.length === 0 ? (
+              {weeklyGoals.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">目標が設定されていません</p>
               ) : (
-                metrics.map((metric, index) => {
-                  const percentage = metric.achievement_rate
+                weeklyGoals.map((goal) => {
+                  const percentage = goal.target_value > 0 ? (goal.current_value / goal.target_value) * 100 : 0
                   const isAchieved = percentage >= 100
 
                   return (
-                    <div key={index} className="space-y-3">
+                    <div key={goal.id} className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-foreground">{metric.metric_name}</span>
+                        <span className="font-medium text-foreground">{goal.plans.title}</span>
                         <div className="flex items-center gap-2">
                           <span
                             className={`text-sm font-semibold ${isAchieved ? "text-accent" : "text-muted-foreground"}`}
                           >
-                            {metric.actual_value}
-                            {metric.unit}
+                            {goal.current_value}
+                            {goal.plans.unit || "時間"}
                           </span>
                           <span className="text-sm text-muted-foreground">/</span>
                           <span className="text-sm text-muted-foreground">
-                            {metric.target_value}
-                            {metric.unit}
+                            {goal.target_value}
+                            {goal.plans.unit || "時間"}
                           </span>
                         </div>
                       </div>

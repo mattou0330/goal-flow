@@ -7,8 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { User, Settings, LogOut, Target, FileText } from "lucide-react"
+import { User, Settings, LogOut } from "lucide-react"
 import Link from "next/link"
+import { signOut } from "@/app/actions/auth"
 
 export function DashboardHeader() {
   return (
@@ -34,14 +35,12 @@ export function DashboardHeader() {
                 href="/goals"
                 className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors flex items-center gap-2"
               >
-                
                 ゴール
               </Link>
               <Link
                 href="/review"
                 className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors flex items-center gap-2"
               >
-                
                 週次レビュー
               </Link>
             </nav>
@@ -57,18 +56,26 @@ export function DashboardHeader() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>マイアカウント</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>プロフィール</span>
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>プロフィール</span>
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>設定</span>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>設定</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>ログアウト</span>
+              <DropdownMenuItem asChild>
+                <form action={signOut} className="w-full">
+                  <button type="submit" className="flex w-full items-center text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>ログアウト</span>
+                  </button>
+                </form>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

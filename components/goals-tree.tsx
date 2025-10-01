@@ -2,12 +2,12 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { ChevronRight, ChevronDown, GripVertical, Target, TrendingUp, BookOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Goal } from "@/app/actions/goals"
-import { updateGoal } from "@/app/actions/goals"
+import type { Goal, Plan } from "@/app/actions/goals"
+import { updateGoal, getPlans } from "@/app/actions/goals"
 
 interface GoalsTreeProps {
   goals: Goal[]
@@ -30,8 +30,31 @@ export function GoalsTree({
   const [goals, setGoals] = useState<Goal[]>(initialGoals)
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(initialSelectedGoalId || null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(initialGoals.map((g) => g.id)))
+  const [expandedPlanIds, setExpandedPlanIds] = useState<Set<string>>(new Set())
+  const [goalPlans, setGoalPlans] = useState<Map<string, Plan[]>>(new Map())
   const [draggedGoalId, setDraggedGoalId] = useState<string | null>(null)
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null)
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      const plansMap = new Map<string, Plan[]>()
+
+      for (const goal of goals) {
+        try {
+          const plans = await getPlans(goal.id)
+          if (plans.length > 0) {
+            plansMap.set(goal.id, plans)
+          }
+        } catch (error) {
+          console.error(`Failed to load plans for goal ${goal.id}:`, error)
+        }
+      }
+
+      setGoalPlans(plansMap)
+    }
+
+    loadPlans()
+  }, [goals])
 
   const handleSelectGoal = (id: string) => {
     setSelectedGoalId(id)
@@ -96,6 +119,16 @@ export function GoalsTree({
       newExpanded.add(id)
     }
     setExpandedIds(newExpanded)
+  }
+
+  const togglePlanExpand = (goalId: string) => {
+    const newExpanded = new Set(expandedPlanIds)
+    if (newExpanded.has(goalId)) {
+      newExpanded.delete(goalId)
+    } else {
+      newExpanded.add(goalId)
+    }
+    setExpandedPlanIds(newExpanded)
   }
 
   const handleDragStart = (e: React.DragEvent, goalId: string) => {
@@ -248,7 +281,10 @@ export function GoalsTree({
 
   const renderGoal = (goal: Goal & { children?: Goal[] }, level = 0) => {
     const hasChildren = goal.children && goal.children.length > 0
+    const plans = goalPlans.get(goal.id) || []
+    const hasPlans = plans.length > 0
     const isExpanded = expandedIds.has(goal.id)
+    const isPlansExpanded = expandedPlanIds.has(goal.id)
     const isSelected = selectedGoalId === goal.id
     const isDragging = draggedGoalId === goal.id
     const showDropBefore = dropIndicator?.goalId === goal.id && dropIndicator.position === "before"
@@ -289,15 +325,20 @@ export function GoalsTree({
             <GripVertical className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
           </div>
 
-          {hasChildren ? (
+          {hasChildren || hasPlans ? (
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                toggleExpand(goal.id)
+                if (hasChildren) {
+                  toggleExpand(goal.id)
+                }
+                if (hasPlans) {
+                  togglePlanExpand(goal.id)
+                }
               }}
               className="p-0.5 hover:bg-accent rounded transition-colors"
             >
-              {isExpanded ? (
+              {(isExpanded && hasChildren) || (isPlansExpanded && hasPlans) ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               ) : (
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -307,20 +348,9 @@ export function GoalsTree({
             <div className="w-5" />
           )}
 
-          <div
-            className={cn(
-              "p-1.5 rounded-lg",
-              isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-            )}
-          >
-            {getIcon(goal)}
-          </div>
-
           <span className={cn("text-sm font-medium flex-1", isSelected ? "text-foreground" : "text-foreground/90")}>
             {goal.title}
           </span>
-
-          <span className="text-xs text-muted-foreground">{goal.progress}%</span>
         </div>
 
         {showDropAfter && (
@@ -329,6 +359,29 @@ export function GoalsTree({
             style={{ marginLeft: `${level * 24}px` }}
           >
             <div className="absolute -left-1 -top-1 w-2 h-2 bg-primary rounded-full" />
+          </div>
+        )}
+
+        {hasPlans && isPlansExpanded && (
+          <div className="mt-1" style={{ marginLeft: `${(level + 1) * 24}px` }}>
+            {plans.map((plan) => (
+              <div
+                key={plan.id}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
+                  "hover:bg-accent/30",
+                  "ml-6",
+                )}
+              >
+                <div className="w-5" />
+                <span className="text-xs text-muted-foreground flex-1">{plan.title}</span>
+                {plan.target_value && plan.unit && (
+                  <span className="text-xs text-muted-foreground">
+                    {plan.current_value || 0}/{plan.target_value} {plan.unit}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
