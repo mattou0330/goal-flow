@@ -1,5 +1,4 @@
 import { DashboardHeader } from "@/components/dashboard-header"
-import { WeeklyProgressComponent } from "@/components/weekly-progress"
 import { QuickRecord } from "@/components/quick-record"
 import { RecentRecords } from "@/components/recent-records"
 import { WeeklyGoals } from "@/components/weekly-goals"
@@ -11,10 +10,7 @@ export default function DashboardPage() {
       <DashboardHeader />
       <main className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <WeeklyProgressComponent />
-            </div>
+          <div className="grid gap-6 md:grid-cols-2">
             <div>
               <WeeklyGoals />
             </div>

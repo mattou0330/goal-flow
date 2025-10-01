@@ -53,6 +53,8 @@ export default function GoalsPage() {
     const title = formData.get("goal-title") as string
     const description = formData.get("goal-description") as string
     const parentId = formData.get("goal-parent") as string | null
+    const startDate = formData.get("goal-start-date") as string | null
+    const targetDate = formData.get("goal-target-date") as string | null
 
     if (!title.trim()) return
 
@@ -61,16 +63,16 @@ export default function GoalsPage() {
         title,
         description: description || undefined,
         parent_id: parentId === "none" ? null : parentId,
+        start_date: startDate || undefined,
+        target_date: targetDate || undefined,
         status: "active",
         progress: 0,
       })
 
-      // 楽観的UI更新：新しいゴールをリストに追加
       setGoals([...goals, newGoal])
       setSelectedGoalId(newGoal.id)
       setIsDialogOpen(false)
 
-      // フォームをリセット
       e.currentTarget.reset()
     } catch (error) {
       console.error("Failed to create goal:", error)
@@ -137,6 +139,14 @@ export default function GoalsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="goal-start-date">開始日</Label>
+                    <Input id="goal-start-date" name="goal-start-date" type="date" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="goal-target-date">期日</Label>
+                    <Input id="goal-target-date" name="goal-target-date" type="date" />
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="submit">作成</Button>
@@ -147,12 +157,10 @@ export default function GoalsPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[350px_1fr]">
-          {/* Left: Goals Tree */}
           <div className="lg:col-span-1">
             <GoalsTree goals={goals} selectedGoalId={selectedGoalId} onSelectGoal={setSelectedGoalId} />
           </div>
 
-          {/* Right: Goal Detail */}
           <div className="lg:col-span-1">
             <GoalDetail goalId={selectedGoalId} />
           </div>

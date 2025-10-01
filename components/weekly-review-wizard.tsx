@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Copy, Check } from "lucide-react"
 import confetti from "canvas-confetti"
 import { useToast } from "@/hooks/use-toast"
 import { getCurrentWeekGoals, type WeeklyGoal, type Plan } from "@/app/actions/goals"
+import { getSettings } from "@/app/actions/settings"
 
 type WeeklyGoalWithPlan = WeeklyGoal & { plans: Plan }
 
@@ -28,6 +29,7 @@ export function WeeklyReviewWizard() {
   const { toast } = useToast()
 
   const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoalWithPlan[]>([])
+  const [weekPeriod, setWeekPeriod] = useState<string>("")
 
   const [reflections, setReflections] = useState({
     summary: "",
@@ -48,11 +50,39 @@ export function WeeklyReviewWizard() {
 
   const loadData = async () => {
     try {
+      const settings = await getSettings()
+      const weekStartDay = settings?.week_start_day || "monday"
+
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+
+      let diff: number
+      if (weekStartDay === "sunday") {
+        diff = -dayOfWeek
+      } else {
+        diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      }
+
+      const weekStart = new Date(now)
+      weekStart.setDate(now.getDate() + diff)
+      weekStart.setHours(0, 0, 0, 0)
+
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      weekEnd.setHours(23, 59, 59, 999)
+
+      const formatDate = (date: Date) => {
+        const month = date.getMonth() + 1
+        const day = date.getDate()
+        return `${month}月${day}日`
+      }
+
+      setWeekPeriod(`${formatDate(weekStart)} 〜 ${formatDate(weekEnd)}`)
+
       const goalsData = await getCurrentWeekGoals()
       console.log("[v0] Loaded weekly goals:", goalsData)
       setWeeklyGoals(goalsData)
 
-      // 来週の目標の初期値として、今週の目標をコピー
       const nextGoals = goalsData.map((goal) => ({
         id: goal.id,
         metric: goal.plans.title,
@@ -140,7 +170,10 @@ export function WeeklyReviewWizard() {
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-foreground">週次レビュー</h1>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">週次レビュー</h1>
+            {weekPeriod && <p className="text-sm text-muted-foreground mt-1">{weekPeriod}</p>}
+          </div>
           <Button variant="outline" size="sm" onClick={handleCopyFromLastWeek} className="gap-2 bg-transparent">
             <Copy className="h-4 w-4" />
             前週からコピー

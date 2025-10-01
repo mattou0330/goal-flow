@@ -36,6 +36,10 @@ export function GoalsTree({
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null)
 
   useEffect(() => {
+    setGoals(initialGoals)
+  }, [initialGoals])
+
+  useEffect(() => {
     const loadPlans = async () => {
       const plansMap = new Map<string, Plan[]>()
 
