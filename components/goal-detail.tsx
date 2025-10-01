@@ -1,14 +1,13 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Calendar, Tag, CheckCircle2, Plus, Edit2, Trash2 } from "lucide-react"
+import { Calendar, CheckCircle2, Plus, Edit2, Trash2, History, Target } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
@@ -20,76 +19,308 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import {
+  type Goal,
+  type Plan,
+  type GoalLog,
+  type GoalWeeklyTarget,
+  type GoalReview,
+  type PlanHistory,
+  getGoal,
+  getPlans,
+  getGoalLogs,
+  getGoalWeeklyTargets,
+  getGoalReviews,
+  getPlanHistory,
+  updateGoal,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  createWeeklyGoal,
+} from "@/app/actions/goals"
 
 interface GoalDetailProps {
-  goalId: string
+  goalId?: string | null
 }
-
-const mockGoalData = {
-  "goal-1": {
-    title: "キャリア成長",
-    description: "技術力とビジネススキルを向上させ、シニアエンジニアを目指す",
-    dueDate: "2025-12-31",
-    status: "進行中",
-    tags: ["キャリア", "スキルアップ"],
-  },
-  "goal-1-1": {
-    title: "プログラミングスキル向上",
-    description: "React、TypeScript、Next.jsの深い理解と実践的なスキルを身につける",
-    dueDate: "2025-06-30",
-    status: "進行中",
-    tags: ["技術", "学習"],
-  },
-}
-
-const mockPlans = [
-  { id: "1", title: "Next.js App Routerの学習", priority: "高" },
-  { id: "2", title: "TypeScript型システムの理解", priority: "中" },
-  { id: "3", title: "パフォーマンス最適化の実践", priority: "低" },
-]
-
-const mockLogs = [
-  {
-    id: "1",
-    date: "2025-03-28",
-    resource: "Next.js公式ドキュメント",
-    quantity: "2時間",
-    note: "App Routerの基礎を学習",
-  },
-  {
-    id: "2",
-    date: "2025-03-27",
-    resource: "TypeScript Deep Dive",
-    quantity: "1.5時間",
-    note: "ジェネリクスの章を読了",
-  },
-  { id: "3", date: "2025-03-26", resource: "コーディング練習", quantity: "3時間", note: "個人プロジェクトでの実装" },
-]
-
-const mockWeeklyTargets = [
-  { id: "1", metric: "学習時間", targetValue: "10", unit: "時間" },
-  { id: "2", metric: "コード実装", targetValue: "5", unit: "回" },
-]
-
-const mockReviews = [
-  { id: "1", week: "2025年第13週", excerpt: "Next.jsの学習が順調に進んでいる。App Routerの理解が深まった。" },
-  { id: "2", week: "2025年第12週", excerpt: "TypeScriptの型システムについて新しい発見があった。実践で活用できそう。" },
-]
 
 export function GoalDetail({ goalId }: GoalDetailProps) {
-  const goal = mockGoalData[goalId as keyof typeof mockGoalData] || mockGoalData["goal-1"]
+  const [goal, setGoal] = useState<Goal | null>(null)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [logs, setLogs] = useState<GoalLog[]>([])
+  const [weeklyTargets, setWeeklyTargets] = useState<GoalWeeklyTarget[]>([])
+  const [reviews, setReviews] = useState<GoalReview[]>([])
   const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [title, setTitle] = useState(goal.title)
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [loading, setLoading] = useState(true)
+
+  const [isAddPlanOpen, setIsAddPlanOpen] = useState(false)
+  const [newPlanTitle, setNewPlanTitle] = useState("")
+  const [newPlanTargetValue, setNewPlanTargetValue] = useState("")
+  const [newPlanUnit, setNewPlanUnit] = useState("")
+  const [newPlanDueDate, setNewPlanDueDate] = useState("")
+  const [newPlanPriority, setNewPlanPriority] = useState<"low" | "medium" | "high">("medium")
+
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
+  const [isEditPlanOpen, setIsEditPlanOpen] = useState(false)
+  const [editPlanTitle, setEditPlanTitle] = useState("")
+  const [editPlanTargetValue, setEditPlanTargetValue] = useState("")
+  const [editPlanCurrentValue, setEditPlanCurrentValue] = useState("")
+  const [editPlanUnit, setEditPlanUnit] = useState("")
+  const [editPlanDueDate, setEditPlanDueDate] = useState("")
+  const [editPlanPriority, setEditPlanPriority] = useState<"low" | "medium" | "high">("medium")
+
+  const [viewingPlanHistory, setViewingPlanHistory] = useState<Plan | null>(null)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [planHistory, setPlanHistory] = useState<PlanHistory[]>([])
+
+  const [isAddWeeklyGoalOpen, setIsAddWeeklyGoalOpen] = useState(false)
+  const [selectedPlanForWeekly, setSelectedPlanForWeekly] = useState<Plan | null>(null)
+  const [weeklyGoalValue, setWeeklyGoalValue] = useState("")
+  const [weeklyGoalNotes, setWeeklyGoalNotes] = useState("")
+
+  useEffect(() => {
+    if (!goalId) {
+      setLoading(false)
+      return
+    }
+
+    const loadGoalData = async () => {
+      try {
+        setLoading(true)
+        const [goalData, plansData, logsData, targetsData, reviewsData] = await Promise.all([
+          getGoal(goalId),
+          getPlans(goalId),
+          getGoalLogs(goalId),
+          getGoalWeeklyTargets(goalId),
+          getGoalReviews(goalId),
+        ])
+
+        setGoal(goalData)
+        setTitle(goalData.title)
+        setDescription(goalData.description || "")
+        setPlans(plansData)
+        setLogs(logsData)
+        setWeeklyTargets(targetsData)
+        setReviews(reviewsData)
+      } catch (error) {
+        console.error("Failed to load goal data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadGoalData()
+  }, [goalId])
+
+  const handleTitleUpdate = async () => {
+    if (!goalId || !title.trim()) return
+    try {
+      await updateGoal(goalId, { title })
+      setIsEditingTitle(false)
+    } catch (error) {
+      console.error("Failed to update title:", error)
+    }
+  }
+
+  const handleDescriptionUpdate = async () => {
+    if (!goalId) return
+    try {
+      await updateGoal(goalId, { description })
+    } catch (error) {
+      console.error("Failed to update description:", error)
+    }
+  }
+
+  const resetPlanForm = () => {
+    setNewPlanTitle("")
+    setNewPlanTargetValue("")
+    setNewPlanUnit("")
+    setNewPlanDueDate("")
+    setNewPlanPriority("medium")
+  }
+
+  const handleCreatePlan = async () => {
+    if (!newPlanTitle.trim()) return
+
+    try {
+      const newPlan = await createPlan({
+        goal_id: goalId,
+        title: newPlanTitle,
+        priority: newPlanPriority,
+        due_date: newPlanDueDate || undefined,
+        target_value: newPlanTargetValue ? Number.parseFloat(newPlanTargetValue) : undefined,
+        current_value: 0,
+        unit: newPlanUnit || undefined,
+      })
+      setPlans([newPlan, ...plans])
+      resetPlanForm()
+      setIsAddPlanOpen(false)
+    } catch (error) {
+      console.error("Failed to create plan:", error)
+    }
+  }
+
+  const openEditPlanDialog = (plan: Plan) => {
+    setEditingPlan(plan)
+    setEditPlanTitle(plan.title)
+    setEditPlanTargetValue(plan.target_value?.toString() || "")
+    setEditPlanCurrentValue(plan.current_value?.toString() || "")
+    setEditPlanUnit(plan.unit || "")
+    setEditPlanDueDate(plan.due_date || "")
+    setEditPlanPriority(plan.priority)
+    setIsEditPlanOpen(true)
+  }
+
+  const resetEditPlanForm = () => {
+    setEditingPlan(null)
+    setEditPlanTitle("")
+    setEditPlanTargetValue("")
+    setEditPlanCurrentValue("")
+    setEditPlanUnit("")
+    setEditPlanDueDate("")
+    setEditPlanPriority("medium")
+  }
+
+  const handleUpdatePlan = async () => {
+    if (!editingPlan || !editPlanTitle.trim()) return
+
+    try {
+      const updatedPlan = await updatePlan(editingPlan.id, {
+        title: editPlanTitle,
+        priority: editPlanPriority,
+        due_date: editPlanDueDate || null,
+        target_value: editPlanTargetValue ? Number.parseFloat(editPlanTargetValue) : null,
+        current_value: editPlanCurrentValue ? Number.parseFloat(editPlanCurrentValue) : null,
+        unit: editPlanUnit || null,
+      })
+      setPlans(plans.map((p) => (p.id === updatedPlan.id ? updatedPlan : p)))
+      resetEditPlanForm()
+      setIsEditPlanOpen(false)
+    } catch (error) {
+      console.error("Failed to update plan:", error)
+    }
+  }
+
+  const openPlanHistory = async (plan: Plan) => {
+    setViewingPlanHistory(plan)
+    setIsHistoryOpen(true)
+    try {
+      const history = await getPlanHistory(plan.id)
+      setPlanHistory(history)
+    } catch (error) {
+      console.error("Failed to load plan history:", error)
+      setPlanHistory([])
+    }
+  }
+
+  const openAddWeeklyGoalDialog = (plan: Plan) => {
+    setSelectedPlanForWeekly(plan)
+    setWeeklyGoalValue("")
+    setWeeklyGoalNotes("")
+    setIsAddWeeklyGoalOpen(true)
+  }
+
+  const handleCreateWeeklyGoal = async () => {
+    if (!selectedPlanForWeekly || !weeklyGoalValue.trim()) return
+
+    console.log("[v0] handleCreateWeeklyGoal called")
+    console.log("[v0] Selected plan:", selectedPlanForWeekly)
+    console.log("[v0] Weekly goal value:", weeklyGoalValue)
+
+    try {
+      // 今週の月曜日を計算
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      const monday = new Date(now)
+      monday.setDate(now.getDate() + diff)
+      monday.setHours(0, 0, 0, 0)
+      const weekStart = monday.toISOString().split("T")[0]
+
+      console.log("[v0] Week start date:", weekStart)
+
+      await createWeeklyGoal({
+        plan_id: selectedPlanForWeekly.id,
+        week_start_date: weekStart,
+        target_value: Number.parseFloat(weeklyGoalValue),
+        notes: weeklyGoalNotes || undefined,
+      })
+
+      console.log("[v0] Weekly goal created successfully")
+
+      setIsAddWeeklyGoalOpen(false)
+      setSelectedPlanForWeekly(null)
+      setWeeklyGoalValue("")
+      setWeeklyGoalNotes("")
+
+      // ページをリロードして最新のデータを表示
+      window.location.reload()
+    } catch (error) {
+      console.error("[v0] Failed to create weekly goal:", error)
+      alert(`今週の目標の追加に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`)
+    }
+  }
+
+  if (!goalId) {
+    return (
+      <Card className="p-6 rounded-2xl bg-card border-border shadow-sm">
+        <div className="text-center py-12 text-muted-foreground">ゴールを選択してください</div>
+      </Card>
+    )
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-6 rounded-2xl bg-card border-border shadow-sm">
+        <div className="text-center py-12 text-muted-foreground">読み込み中...</div>
+      </Card>
+    )
+  }
+
+  if (!goal) {
+    return (
+      <Card className="p-6 rounded-2xl bg-card border-border shadow-sm">
+        <div className="text-center py-12 text-muted-foreground">ゴールが見つかりません</div>
+      </Card>
+    )
+  }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "高":
+      case "high":
         return "bg-destructive/10 text-destructive border-destructive/20"
-      case "中":
+      case "medium":
         return "bg-accent/10 text-accent-foreground border-accent/20"
       default:
         return "bg-muted text-muted-foreground border-border"
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "active":
+        return "進行中"
+      case "completed":
+        return "完了"
+      case "archived":
+        return "アーカイブ"
+      default:
+        return status
+    }
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case "high":
+        return "高"
+      case "medium":
+        return "中"
+      case "low":
+        return "低"
+      default:
+        return priority
     }
   }
 
@@ -102,9 +333,9 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => setIsEditingTitle(false)}
+              onBlur={handleTitleUpdate}
               onKeyDown={(e) => {
-                if (e.key === "Enter") setIsEditingTitle(false)
+                if (e.key === "Enter") handleTitleUpdate()
               }}
               className="text-2xl font-bold h-auto py-2"
               autoFocus
@@ -123,30 +354,26 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
         </div>
 
         <Textarea
-          defaultValue={goal.description}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onBlur={handleDescriptionUpdate}
           className="min-h-[80px] resize-none"
           placeholder="ゴールの説明を入力..."
         />
 
         <div className="flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>期限: {goal.dueDate}</span>
-          </div>
+          {goal.target_date && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span>期限: {goal.target_date}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-accent" />
-            <span className="text-accent font-medium">{goal.status}</span>
+            <span className="text-accent font-medium">{getStatusLabel(goal.status)}</span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Tag className="h-4 w-4 text-muted-foreground" />
-          <div className="flex gap-2">
-            {goal.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="rounded-full">
-                {tag}
-              </Badge>
-            ))}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">進捗: {goal.progress}%</span>
           </div>
         </div>
       </div>
@@ -163,14 +390,14 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
         {/* プラン Tab */}
         <TabsContent value="plan" className="space-y-3">
           <div className="flex justify-end mb-2">
-            <Dialog>
+            <Dialog open={isAddPlanOpen} onOpenChange={setIsAddPlanOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-2">
                   <Plus className="h-4 w-4" />
                   プラン追加
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>新規プラン</DialogTitle>
                   <DialogDescription>このゴールに関連するプランを追加します</DialogDescription>
@@ -178,118 +405,402 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="plan-title">タイトル</Label>
-                    <Input id="plan-title" placeholder="プランのタイトル" />
+                    <Input
+                      id="plan-title"
+                      value={newPlanTitle}
+                      onChange={(e) => setNewPlanTitle(e.target.value)}
+                      placeholder="例: TOEIC模試を解く"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.preventDefault()
+                          handleCreatePlan()
+                        }
+                      }}
+                    />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="plan-target-value">目標値</Label>
+                      <Input
+                        id="plan-target-value"
+                        type="number"
+                        step="0.01"
+                        value={newPlanTargetValue}
+                        onChange={(e) => setNewPlanTargetValue(e.target.value)}
+                        placeholder="例: 900"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="plan-unit">単位</Label>
+                      <Input
+                        id="plan-unit"
+                        value={newPlanUnit}
+                        onChange={(e) => setNewPlanUnit(e.target.value)}
+                        placeholder="例: 点"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="plan-due-date">期日</Label>
+                    <Input
+                      id="plan-due-date"
+                      type="date"
+                      value={newPlanDueDate}
+                      onChange={(e) => setNewPlanDueDate(e.target.value)}
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="plan-priority">優先度</Label>
-                    <Select defaultValue="中">
+                    <Select
+                      value={newPlanPriority}
+                      onValueChange={(value: "low" | "medium" | "high") => setNewPlanPriority(value)}
+                    >
                       <SelectTrigger id="plan-priority">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="高">高</SelectItem>
-                        <SelectItem value="中">中</SelectItem>
-                        <SelectItem value="低">低</SelectItem>
+                        <SelectItem value="high">高</SelectItem>
+                        <SelectItem value="medium">中</SelectItem>
+                        <SelectItem value="low">低</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit">追加</Button>
+                  <Button onClick={handleCreatePlan}>追加</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
 
-          {mockPlans.map((plan) => (
-            <div
-              key={plan.id}
-              className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <Badge className={cn("rounded-full", getPriorityColor(plan.priority))}>{plan.priority}</Badge>
-                <span className="text-sm font-medium">{plan.title}</span>
+          {plans.length > 0 ? (
+            plans.map((plan) => (
+              <div
+                key={plan.id}
+                className="flex items-start justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
+              >
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <Badge className={cn("rounded-full", getPriorityColor(plan.priority))}>
+                      {getPriorityLabel(plan.priority)}
+                    </Badge>
+                    <span className="text-sm font-medium">{plan.title}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                    {plan.target_value && plan.unit && (
+                      <span>
+                        目標: {plan.current_value || 0} / {plan.target_value} {plan.unit}
+                      </span>
+                    )}
+                    {plan.due_date && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        期日: {plan.due_date}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openAddWeeklyGoalDialog(plan)}
+                    title="今週の目標に追加"
+                  >
+                    <Target className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openPlanHistory(plan)}
+                    title="編集履歴を表示"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditPlanDialog(plan)}>
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={async () => {
+                      try {
+                        await deletePlan(plan.id)
+                        setPlans(plans.filter((p) => p.id !== plan.id))
+                      } catch (error) {
+                        console.error("Failed to delete plan:", error)
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Edit2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">プランがありません</div>
+          )}
         </TabsContent>
 
         {/* 記録 Tab */}
         <TabsContent value="logs" className="space-y-3">
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-3 text-sm font-medium text-muted-foreground">日付</th>
-                  <th className="text-left p-3 text-sm font-medium text-muted-foreground">リソース</th>
-                  <th className="text-left p-3 text-sm font-medium text-muted-foreground">数量</th>
-                  <th className="text-left p-3 text-sm font-medium text-muted-foreground">メモ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockLogs.map((log) => (
-                  <tr key={log.id} className="border-t border-border hover:bg-muted/30 transition-colors">
-                    <td className="p-3 text-sm">{log.date}</td>
-                    <td className="p-3 text-sm font-medium">{log.resource}</td>
-                    <td className="p-3 text-sm">{log.quantity}</td>
-                    <td className="p-3 text-sm text-muted-foreground">{log.note}</td>
+          {logs.length > 0 ? (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">日付</th>
+                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">タイプ</th>
+                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">内容</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {logs.map((log) => (
+                    <tr key={log.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                      <td className="p-3 text-sm">{new Date(log.created_at).toLocaleDateString("ja-JP")}</td>
+                      <td className="p-3 text-sm">
+                        <Badge variant="secondary">{log.log_type}</Badge>
+                      </td>
+                      <td className="p-3 text-sm text-muted-foreground">{log.content}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">記録がありません</div>
+          )}
         </TabsContent>
 
         {/* 週目標 Tab */}
         <TabsContent value="targets" className="space-y-3">
-          <div className="flex justify-end mb-2">
-            <Button size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              目標追加
-            </Button>
-          </div>
-
-          {mockWeeklyTargets.map((target) => (
-            <div
-              key={target.id}
-              className="flex items-center gap-4 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
-            >
-              <div className="flex-1">
-                <div className="text-sm font-medium mb-1">{target.metric}</div>
-                <div className="text-xs text-muted-foreground">
-                  目標: {target.targetValue} {target.unit}
+          {weeklyTargets.length > 0 ? (
+            weeklyTargets.map((target) => (
+              <div
+                key={target.id}
+                className="flex items-center gap-4 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
+              >
+                <div className="flex-1">
+                  <div className="text-sm font-medium mb-1">{target.target}</div>
+                  <div className="text-xs text-muted-foreground">週開始: {target.week_start}</div>
+                  <Badge variant="secondary" className="mt-2">
+                    {target.status}
+                  </Badge>
                 </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Edit2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">週目標がありません</div>
+          )}
         </TabsContent>
 
         {/* レビュー Tab */}
         <TabsContent value="reviews" className="space-y-4">
-          {mockReviews.map((review) => (
-            <div key={review.id} className="p-4 rounded-lg bg-muted/30 border border-border">
-              <div className="text-sm font-medium text-primary mb-2">{review.week}</div>
-              <p className="text-sm text-foreground/90 leading-relaxed">{review.excerpt}</p>
-            </div>
-          ))}
+          {reviews.length > 0 ? (
+            reviews.map((review) => (
+              <div key={review.id} className="p-4 rounded-lg bg-muted/30 border border-border">
+                <div className="text-sm font-medium text-primary mb-2">
+                  {new Date(review.review_date).toLocaleDateString("ja-JP")}
+                </div>
+                {review.what_went_well && (
+                  <div className="mb-2">
+                    <div className="text-xs font-medium text-muted-foreground mb-1">良かった点</div>
+                    <p className="text-sm text-foreground/90 leading-relaxed">{review.what_went_well}</p>
+                  </div>
+                )}
+                {review.what_to_improve && (
+                  <div className="mb-2">
+                    <div className="text-xs font-medium text-muted-foreground mb-1">改善点</div>
+                    <p className="text-sm text-foreground/90 leading-relaxed">{review.what_to_improve}</p>
+                  </div>
+                )}
+                {review.rating && <div className="text-xs text-muted-foreground">評価: {review.rating}/5</div>}
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">レビューがありません</div>
+          )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isEditPlanOpen} onOpenChange={setIsEditPlanOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>プランを編集</DialogTitle>
+            <DialogDescription>プランの内容を更新します</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-plan-title">タイトル</Label>
+              <Input
+                id="edit-plan-title"
+                value={editPlanTitle}
+                onChange={(e) => setEditPlanTitle(e.target.value)}
+                placeholder="例: TOEIC模試を解く"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-plan-target-value">目標値</Label>
+                <Input
+                  id="edit-plan-target-value"
+                  type="number"
+                  step="0.01"
+                  value={editPlanTargetValue}
+                  onChange={(e) => setEditPlanTargetValue(e.target.value)}
+                  placeholder="例: 900"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-plan-current-value">現在値</Label>
+                <Input
+                  id="edit-plan-current-value"
+                  type="number"
+                  step="0.01"
+                  value={editPlanCurrentValue}
+                  onChange={(e) => setEditPlanCurrentValue(e.target.value)}
+                  placeholder="例: 750"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-plan-unit">単位</Label>
+              <Input
+                id="edit-plan-unit"
+                value={editPlanUnit}
+                onChange={(e) => setEditPlanUnit(e.target.value)}
+                placeholder="例: 点"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-plan-due-date">期日</Label>
+              <Input
+                id="edit-plan-due-date"
+                type="date"
+                value={editPlanDueDate}
+                onChange={(e) => setEditPlanDueDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-plan-priority">優先度</Label>
+              <Select
+                value={editPlanPriority}
+                onValueChange={(value: "low" | "medium" | "high") => setEditPlanPriority(value)}
+              >
+                <SelectTrigger id="edit-plan-priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">高</SelectItem>
+                  <SelectItem value="medium">中</SelectItem>
+                  <SelectItem value="low">低</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditPlanOpen(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleUpdatePlan}>更新</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>編集履歴</DialogTitle>
+            <DialogDescription>{viewingPlanHistory?.title}の編集履歴</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {planHistory.length > 0 ? (
+              planHistory.map((history) => (
+                <div key={history.id} className="p-3 rounded-lg bg-muted/30 border border-border space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="secondary">{history.change_type}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(history.created_at).toLocaleString("ja-JP")}
+                    </span>
+                  </div>
+                  {history.field_name && (
+                    <div className="text-sm">
+                      <span className="font-medium">{history.field_name}</span>
+                      <div className="flex items-center gap-2 mt-1 text-xs">
+                        <span className="text-muted-foreground line-through">{history.old_value || "なし"}</span>
+                        <span>→</span>
+                        <span className="text-foreground font-medium">{history.new_value || "なし"}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground text-sm">編集履歴がありません</div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddWeeklyGoalOpen} onOpenChange={setIsAddWeeklyGoalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>今週の目標に追加</DialogTitle>
+            <DialogDescription>{selectedPlanForWeekly?.title}の今週の目標値を設定します</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="weekly-goal-value">今週の目標値</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  id="weekly-goal-value"
+                  type="number"
+                  step="0.01"
+                  value={weeklyGoalValue}
+                  onChange={(e) => setWeeklyGoalValue(e.target.value)}
+                  placeholder={`例: ${selectedPlanForWeekly?.target_value ? Math.floor(selectedPlanForWeekly.target_value / 10) : "10"}`}
+                  className="flex-1"
+                />
+                {selectedPlanForWeekly?.unit && (
+                  <span className="text-sm text-muted-foreground">{selectedPlanForWeekly.unit}</span>
+                )}
+              </div>
+              {selectedPlanForWeekly?.target_value && (
+                <p className="text-xs text-muted-foreground">
+                  全体目標: {selectedPlanForWeekly.target_value} {selectedPlanForWeekly.unit}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="weekly-goal-notes">メモ（任意）</Label>
+              <Textarea
+                id="weekly-goal-notes"
+                value={weeklyGoalNotes}
+                onChange={(e) => setWeeklyGoalNotes(e.target.value)}
+                placeholder="今週の目標についてのメモ..."
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddWeeklyGoalOpen(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleCreateWeeklyGoal}>追加</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

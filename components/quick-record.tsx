@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus } from "lucide-react"
 import { useState } from "react"
-import { getSupabase } from "@/lib/supabase"
+import { getSupabase, isMockMode } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 
 export function QuickRecord() {
@@ -28,6 +28,18 @@ export function QuickRecord() {
         description: "数量と単位を入力してください",
         variant: "destructive",
       })
+      return
+    }
+
+    if (isMockMode()) {
+      toast({
+        title: "モックモード",
+        description: "環境変数を設定すると実際のデータベースに保存できます",
+        variant: "default",
+      })
+      setQuantity("")
+      setUnit("")
+      setNote("")
       return
     }
 
@@ -63,8 +75,8 @@ export function QuickRecord() {
       setUnit("")
       setNote("")
 
-      // ページをリロードして最新データを表示
-      window.location.reload()
+      // 他のコンポーネントに新しい記録が追加されたことを通知
+      window.dispatchEvent(new CustomEvent("recordAdded"))
     } catch (error) {
       console.error("[v0] Error submitting record:", error)
       toast({

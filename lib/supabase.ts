@@ -1,18 +1,56 @@
-import { createBrowserClient } from "@supabase/ssr"
+import { createBrowserClient, createServerClient as createSupabaseServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
+let useMockMode = false
 
 export function getSupabase() {
   if (supabaseClient) {
     return supabaseClient
   }
 
-  supabaseClient = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.trim() === "" || supabaseAnonKey.trim() === "") {
+    useMockMode = true
+    return null as any
+  }
+
+  supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
   return supabaseClient
+}
+
+export function createServerClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase environment variables are not set")
+  }
+
+  const cookieStore = cookies()
+
+  return createSupabaseServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+          })
+        } catch (error) {
+          // Server Componentからのcookie設定エラーを無視
+        }
+      },
+    },
+  })
+}
+
+export function isMockMode(): boolean {
+  return useMockMode
 }
 
 export type WeeklyTarget = {
@@ -61,9 +99,51 @@ export type WeeklyProgress = {
 export function getWeekStartDate(date: Date = new Date()): string {
   const jstDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }))
   const day = jstDate.getDay()
-  const diff = day === 0 ? -6 : 1 - day // 月曜日を週の開始とする
+  const diff = day === 0 ? -6 : 1 - day
   const weekStart = new Date(jstDate)
   weekStart.setDate(jstDate.getDate() + diff)
   weekStart.setHours(0, 0, 0, 0)
   return weekStart.toISOString().split("T")[0]
 }
+
+export const mockWeeklyTargets: WeeklyTarget[] = [
+  {
+    id: "mock-1",
+    user_id: "mock-user",
+    week_start_date: getWeekStartDate(),
+    metric_name: "ランニング",
+    target_value: 20,
+    unit: "km",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "mock-2",
+    user_id: "mock-user",
+    week_start_date: getWeekStartDate(),
+    metric_name: "読書",
+    target_value: 3,
+    unit: "冊",
+    created_at: new Date().toISOString(),
+  },
+]
+
+export const mockRecords: Record[] = [
+  {
+    id: "mock-rec-1",
+    user_id: "mock-user",
+    performed_at: new Date().toISOString(),
+    quantity: 5,
+    unit: "km",
+    memo: "朝のランニング",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "mock-rec-2",
+    user_id: "mock-user",
+    performed_at: new Date(Date.now() - 86400000).toISOString(),
+    quantity: 1,
+    unit: "冊",
+    memo: "ビジネス書を読了",
+    created_at: new Date().toISOString(),
+  },
+]

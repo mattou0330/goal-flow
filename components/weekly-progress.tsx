@@ -2,12 +2,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
-import { getSupabase, getWeekStartDate } from "@/lib/supabase"
+import { getSupabase, getWeekStartDate, isMockMode, mockWeeklyTargets, mockRecords } from "@/lib/supabase"
 
 export function WeeklyProgressComponent() {
   const [progress, setProgress] = useState([])
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
+  const [dbNotSetup, setDbNotSetup] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -16,6 +17,23 @@ export function WeeklyProgressComponent() {
 
   const loadProgress = async () => {
     try {
+      if (isMockMode()) {
+        const mockProgress = mockWeeklyTargets.map((target) => {
+          const actualValue = mockRecords.filter((r) => r.unit === target.unit).reduce((sum, r) => sum + r.quantity, 0)
+
+          return {
+            metric_name: target.metric_name,
+            target_value: target.target_value,
+            actual_value: actualValue,
+            unit: target.unit,
+            achievement_rate: (actualValue / target.target_value) * 100,
+          }
+        })
+        setProgress(mockProgress)
+        setLoading(false)
+        return
+      }
+
       const supabase = getSupabase()
       const weekStart = getWeekStartDate()
 
@@ -24,13 +42,42 @@ export function WeeklyProgressComponent() {
       })
 
       if (error) {
-        console.error("[v0] Error loading weekly progress:", error)
+        if (error.message?.includes("schema cache") || error.message?.includes("does not exist")) {
+          setDbNotSetup(true)
+          const mockProgress = mockWeeklyTargets.map((target) => {
+            const actualValue = mockRecords
+              .filter((r) => r.unit === target.unit)
+              .reduce((sum, r) => sum + r.quantity, 0)
+
+            return {
+              metric_name: target.metric_name,
+              target_value: target.target_value,
+              actual_value: actualValue,
+              unit: target.unit,
+              achievement_rate: (actualValue / target.target_value) * 100,
+            }
+          })
+          setProgress(mockProgress)
+        }
+        setLoading(false)
         return
       }
 
       setProgress(data || [])
     } catch (error) {
-      console.error("[v0] Error loading weekly progress:", error)
+      setDbNotSetup(true)
+      const mockProgress = mockWeeklyTargets.map((target) => {
+        const actualValue = mockRecords.filter((r) => r.unit === target.unit).reduce((sum, r) => sum + r.quantity, 0)
+
+        return {
+          metric_name: target.metric_name,
+          target_value: target.target_value,
+          actual_value: actualValue,
+          unit: target.unit,
+          achievement_rate: (actualValue / target.target_value) * 100,
+        }
+      })
+      setProgress(mockProgress)
     } finally {
       setLoading(false)
     }
@@ -59,9 +106,23 @@ export function WeeklyProgressComponent() {
   return (
     <Card className="rounded-lg shadow-sm border-border">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">今週の進捗</CardTitle>
+        <CardTitle className="text-lg font-semibold">
+          今週の進捗
+          {dbNotSetup && (
+            <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 px-2 py-1 rounded">デモモード</span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center pb-8">
+        {dbNotSetup && (
+          <div className="w-full mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+            <p className="font-medium mb-1">データベースのセットアップが必要です</p>
+            <p className="text-xs">
+              scriptsフォルダ内のSQLスクリプトを実行してください。現在はサンプルデータを表示しています。
+            </p>
+          </div>
+        )}
+
         <div className="relative w-48 h-48 mb-6">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 160 160">
             <circle

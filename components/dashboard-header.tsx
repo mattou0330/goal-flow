@@ -34,14 +34,14 @@ export function DashboardHeader() {
                 href="/goals"
                 className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors flex items-center gap-2"
               >
-                <Target className="h-4 w-4" />
+                
                 ゴール
               </Link>
               <Link
                 href="/review"
                 className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-lg transition-colors flex items-center gap-2"
               >
-                <FileText className="h-4 w-4" />
+                
                 週次レビュー
               </Link>
             </nav>

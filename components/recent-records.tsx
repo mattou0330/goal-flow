@@ -3,18 +3,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock } from "lucide-react"
 import { useEffect, useState } from "react"
-import { getSupabase, type Record } from "@/lib/supabase"
+import { getSupabase, type Record, isMockMode, mockRecords } from "@/lib/supabase"
 
 export function RecentRecords() {
   const [records, setRecords] = useState<Record[]>([])
   const [loading, setLoading] = useState(true)
+  const [dbNotSetup, setDbNotSetup] = useState(false)
 
   useEffect(() => {
     loadRecords()
+
+    const handleRecordAdded = () => {
+      loadRecords()
+    }
+
+    window.addEventListener("recordAdded", handleRecordAdded)
+
+    return () => {
+      window.removeEventListener("recordAdded", handleRecordAdded)
+    }
   }, [])
 
   const loadRecords = async () => {
     try {
+      if (isMockMode()) {
+        setRecords(mockRecords)
+        setLoading(false)
+        return
+      }
+
       const supabase = getSupabase()
 
       const { data, error } = await supabase
@@ -24,13 +41,18 @@ export function RecentRecords() {
         .limit(5)
 
       if (error) {
-        console.error("[v0] Error loading records:", error)
+        if (error.message?.includes("schema cache") || error.message?.includes("does not exist")) {
+          setDbNotSetup(true)
+          setRecords(mockRecords)
+        }
+        setLoading(false)
         return
       }
 
       setRecords(data || [])
     } catch (error) {
-      console.error("[v0] Error loading records:", error)
+      setDbNotSetup(true)
+      setRecords(mockRecords)
     } finally {
       setLoading(false)
     }
@@ -66,9 +88,23 @@ export function RecentRecords() {
   return (
     <Card className="rounded-lg shadow-sm border-border">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">最近の記録</CardTitle>
+        <CardTitle className="text-lg font-semibold">
+          最近の記録
+          {dbNotSetup && (
+            <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 px-2 py-1 rounded">デモモード</span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
+        {dbNotSetup && (
+          <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+            <p className="font-medium mb-1">データベースのセットアップが必要です</p>
+            <p className="text-xs">
+              scriptsフォルダ内のSQLスクリプトを実行してください。現在はサンプルデータを表示しています。
+            </p>
+          </div>
+        )}
+
         {records.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">記録がありません</p>
         ) : (
