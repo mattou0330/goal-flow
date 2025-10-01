@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Suspense } from "react"
 import "./globals.css"
+import { ColorThemeProvider } from "@/components/color-theme-provider"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,15 +16,17 @@ export const metadata: Metadata = {
   generator: "v0.app",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="ja" data-theme="blue">
       <body className={`font-sans ${inter.variable}`}>
-        <Suspense fallback={null}>{children}</Suspense>
+        <ColorThemeProvider>
+          <Suspense fallback={null}>{children}</Suspense>
+        </ColorThemeProvider>
       </body>
     </html>
   )

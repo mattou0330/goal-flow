@@ -79,7 +79,7 @@ export default function GoalsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background dark">
+      <div className="min-h-screen bg-background">
         <DashboardHeader />
         <main className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
           <div className="text-center py-12 text-muted-foreground">読み込み中...</div>
@@ -89,7 +89,7 @@ export default function GoalsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background dark">
+    <div className="min-h-screen bg-background">
       <DashboardHeader />
       <main className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
         <div className="flex items-center justify-between mb-6">
