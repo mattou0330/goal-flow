@@ -398,7 +398,7 @@ export function GoalsTree({
 
   return (
     <Card
-      className="p-4 rounded-2xl bg-card border-border shadow-sm"
+      className="p-4 rounded-2xl bg-card border-border"
       onDragOver={(e) => {
         e.preventDefault()
         if (draggedGoalId) {
@@ -407,11 +407,11 @@ export function GoalsTree({
       }}
       onDrop={handleDropAsRoot}
     >
-      <h3 className="text-lg font-semibold mb-4 text-foreground">ゴールツリー</h3>
+      <h3 className="text-lg font-black mb-4 text-foreground uppercase tracking-wide">ゴールツリー</h3>
       {treeData.length > 0 ? (
         <div className="space-y-1">{treeData.map((goal) => renderGoal(goal))}</div>
       ) : (
-        <div className="text-center py-8 text-muted-foreground text-sm">
+        <div className="text-center py-8 text-muted-foreground text-sm font-semibold">
           ゴールがありません。新規ゴールを作成してください。
         </div>
       )}

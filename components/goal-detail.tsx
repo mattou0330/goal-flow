@@ -353,7 +353,7 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
 
   if (!goalId) {
     return (
-      <Card className="p-6 rounded-2xl bg-card border-border shadow-sm">
+      <Card className="p-6 rounded-2xl bg-card border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div className="text-center py-12 text-muted-foreground">ゴールを選択してください</div>
       </Card>
     )
@@ -361,7 +361,7 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
 
   if (loading) {
     return (
-      <Card className="p-6 rounded-2xl bg-card border-border shadow-sm">
+      <Card className="p-6 rounded-2xl bg-card border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div className="text-center py-12 text-muted-foreground">読み込み中...</div>
       </Card>
     )
@@ -369,7 +369,7 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
 
   if (!goal) {
     return (
-      <Card className="p-6 rounded-2xl bg-card border-border shadow-sm">
+      <Card className="p-6 rounded-2xl bg-card border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
         <div className="text-center py-12 text-muted-foreground">ゴールが見つかりません</div>
       </Card>
     )
@@ -413,7 +413,7 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
   }
 
   return (
-    <Card className="p-6 rounded-2xl bg-card border-border shadow-sm">
+    <Card className="p-6 rounded-2xl bg-card border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
       <div className="space-y-4 mb-4">
         <div className="flex items-start justify-between gap-4">
           {isEditingTitle ? (
@@ -665,7 +665,7 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
           plans.map((plan) => (
             <div
               key={plan.id}
-              className="flex items-start justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
+              className="flex items-start justify-between p-4 rounded-lg border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-muted/30 hover:bg-muted/50 transition-colors group"
             >
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-3">

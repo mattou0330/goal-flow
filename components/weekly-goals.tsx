@@ -129,7 +129,7 @@ export function WeeklyGoals() {
 
   if (loading) {
     return (
-      <Card className="rounded-lg shadow-sm border-border">
+      <Card>
         <CardHeader>
           <CardTitle className="text-lg font-semibold">今週の目標</CardTitle>
         </CardHeader>
@@ -141,7 +141,7 @@ export function WeeklyGoals() {
   }
 
   return (
-    <Card className="rounded-lg shadow-sm border-border">
+    <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold">今週の目標</CardTitle>
       </CardHeader>

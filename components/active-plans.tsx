@@ -63,7 +63,7 @@ export function ActivePlans() {
 
   if (loading) {
     return (
-      <Card className="rounded-lg shadow-sm border-border">
+      <Card>
         <CardHeader>
           <CardTitle className="text-lg font-semibold">プラン</CardTitle>
         </CardHeader>
@@ -75,7 +75,7 @@ export function ActivePlans() {
   }
 
   return (
-    <Card className="rounded-lg shadow-sm border-border">
+    <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold">プラン</CardTitle>
       </CardHeader>

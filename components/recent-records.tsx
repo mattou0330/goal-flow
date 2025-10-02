@@ -269,7 +269,7 @@ export function RecentRecords() {
 
   return (
     <>
-      <Card className="rounded-lg shadow-sm border-border">
+      <Card className="rounded-lg border-border">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">
             最近の記録
@@ -280,16 +280,16 @@ export function RecentRecords() {
         </CardHeader>
         <CardContent>
           {dbNotSetup && (
-            <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
-              <p className="font-medium mb-1">データベースのセットアップが必要です</p>
-              <p className="text-xs">
+            <div className="mb-4 p-3 rounded-lg bg-amber-50 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] text-sm text-amber-800">
+              <p className="font-bold mb-1">データベースのセットアップが必要です</p>
+              <p className="text-xs font-semibold">
                 scriptsフォルダ内のSQLスクリプトを実行してください。現在はサンプルデータを表示しています。
               </p>
             </div>
           )}
 
           {records.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">記録がありません</p>
+            <p className="text-center text-muted-foreground py-8 font-semibold">記録がありません</p>
           ) : (
             <>
               <div className="space-y-3">
@@ -300,7 +300,7 @@ export function RecentRecords() {
                   return (
                     <div
                       key={record.id}
-                      className="flex items-center gap-4 p-4 rounded-lg bg-card hover:bg-muted/50 transition-colors border border-border"
+                      className="flex items-center gap-4 p-4 rounded-lg bg-card hover:bg-muted/50 transition-colors border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
                     >
                       <div className="p-3 rounded-lg bg-primary/10">
                         <Clock className="h-5 w-5 text-primary" />

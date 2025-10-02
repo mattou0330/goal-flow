@@ -167,11 +167,11 @@ export function QuickRecord() {
 
   return (
     <Card
-      className={`rounded-lg shadow-sm transition-all ${
+      className={`transition-all ${
         isDragOver
-          ? "border-primary border-2 bg-primary/5 shadow-lg"
+          ? "border-primary border-2 bg-primary/5"
           : droppedItem
-            ? "border-border"
+            ? ""
             : "border-dashed border-2 border-muted-foreground/30"
       }`}
       onDragOver={handleDragOver}

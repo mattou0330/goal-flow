@@ -218,7 +218,7 @@ export function WeeklyReviewWizard() {
         </div>
       </div>
 
-      <Card className="p-6 rounded-2xl border-border bg-card">
+      <Card className="p-6 rounded-2xl border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card">
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
