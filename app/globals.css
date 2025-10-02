@@ -4,112 +4,78 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* デフォルト（ブルー）テーマ */
-  --background: oklch(0.98 0.005 240);
-  --foreground: oklch(0.25 0.01 240);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.01 240);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.01 240);
-  --primary: oklch(0.65 0.15 190);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.01 240);
-  --secondary-foreground: oklch(0.25 0.01 240);
-  --muted: oklch(0.96 0.005 240);
-  --muted-foreground: oklch(0.5 0.01 240);
-  --accent: oklch(0.62 0.18 350);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.9 0.005 240);
-  --input: oklch(0.9 0.005 240);
-  --ring: oklch(0.65 0.15 190);
-  --chart-1: oklch(0.65 0.15 190);
-  --chart-2: oklch(0.62 0.18 350);
-  --chart-3: oklch(0.6 0.15 60);
-  --chart-4: oklch(0.58 0.15 270);
-  --chart-5: oklch(0.55 0.18 30);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.98 0.005 240);
-  --sidebar-foreground: oklch(0.25 0.01 240);
-  --sidebar-primary: oklch(0.65 0.15 190);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.95 0.01 240);
-  --sidebar-accent-foreground: oklch(0.25 0.01 240);
-  --sidebar-border: oklch(0.9 0.005 240);
-  --sidebar-ring: oklch(0.65 0.15 190);
+  /* ネオブルータリズムカラーパレット - 鮮やかで大胆な色彩 */
+  --background: #fafafa;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #00d9ff;
+  --primary-foreground: #000000;
+  --secondary: #ffeb3b;
+  --secondary-foreground: #000000;
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+  --accent: #ff006e;
+  --accent-foreground: #ffffff;
+  --destructive: #ff3d00;
+  --destructive-foreground: #ffffff;
+  --border: #000000;
+  --input: #ffffff;
+  --ring: #00d9ff;
+  --chart-1: #00d9ff;
+  --chart-2: #ff006e;
+  --chart-3: #ffeb3b;
+  --chart-4: #8338ec;
+  --chart-5: #06ffa5;
+  --radius: 0rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #00d9ff;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #ffeb3b;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #000000;
+  --sidebar-ring: #00d9ff;
 }
 
-/* グリーンテーマ */
-[data-theme="green"] {
-  --primary: oklch(0.6 0.15 150);
-  --ring: oklch(0.6 0.15 150);
-  --chart-1: oklch(0.6 0.15 150);
-  --sidebar-primary: oklch(0.6 0.15 150);
-  --sidebar-ring: oklch(0.6 0.15 150);
-}
-
-/* パープルテーマ */
-[data-theme="purple"] {
-  --primary: oklch(0.58 0.15 270);
-  --ring: oklch(0.58 0.15 270);
-  --chart-1: oklch(0.58 0.15 270);
-  --sidebar-primary: oklch(0.58 0.15 270);
-  --sidebar-ring: oklch(0.58 0.15 270);
-}
-
-/* オレンジテーマ */
-[data-theme="orange"] {
-  --primary: oklch(0.65 0.18 60);
-  --ring: oklch(0.65 0.18 60);
-  --chart-1: oklch(0.65 0.18 60);
-  --sidebar-primary: oklch(0.65 0.18 60);
-  --sidebar-ring: oklch(0.65 0.18 60);
-}
-
-/* レッドテーマ */
-[data-theme="red"] {
-  --primary: oklch(0.62 0.18 25);
-  --ring: oklch(0.62 0.18 25);
-  --chart-1: oklch(0.62 0.18 25);
-  --sidebar-primary: oklch(0.62 0.18 25);
-  --sidebar-ring: oklch(0.62 0.18 25);
-}
+/* data-theme関連のCSSを削除 */
 
 .dark {
-  /* ダークモードを削除してライトモードのみに統一 */
-  --background: oklch(0.98 0.005 240);
-  --foreground: oklch(0.25 0.01 240);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.01 240);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.01 240);
-  --primary: oklch(0.65 0.15 190);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.01 240);
-  --secondary-foreground: oklch(0.25 0.01 240);
-  --muted: oklch(0.96 0.005 240);
-  --muted-foreground: oklch(0.5 0.01 240);
-  --accent: oklch(0.62 0.18 350);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.9 0.005 240);
-  --input: oklch(0.9 0.005 240);
-  --ring: oklch(0.65 0.15 190);
-  --chart-1: oklch(0.65 0.15 190);
-  --chart-2: oklch(0.62 0.18 350);
-  --chart-3: oklch(0.6 0.15 60);
-  --chart-4: oklch(0.58 0.15 270);
-  --chart-5: oklch(0.55 0.18 30);
-  --sidebar: oklch(0.98 0.005 240);
-  --sidebar-foreground: oklch(0.25 0.01 240);
-  --sidebar-primary: oklch(0.65 0.15 190);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.95 0.01 240);
-  --sidebar-accent-foreground: oklch(0.25 0.01 240);
-  --sidebar-border: oklch(0.9 0.005 240);
-  --sidebar-ring: oklch(0.65 0.15 190);
+  /* ダークモードもライトモードと同じに統一（ネオブルータリズムは明るい背景が特徴） */
+  --background: #fafafa;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #00d9ff;
+  --primary-foreground: #000000;
+  --secondary: #ffeb3b;
+  --secondary-foreground: #000000;
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+  --accent: #ff006e;
+  --accent-foreground: #ffffff;
+  --destructive: #ff3d00;
+  --destructive-foreground: #ffffff;
+  --border: #000000;
+  --input: #ffffff;
+  --ring: #00d9ff;
+  --chart-1: #00d9ff;
+  --chart-2: #ff006e;
+  --chart-3: #ffeb3b;
+  --chart-4: #8338ec;
+  --chart-5: #06ffa5;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #00d9ff;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #ffeb3b;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #000000;
+  --sidebar-ring: #00d9ff;
 }
 
 @theme inline {
@@ -158,6 +124,6 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-semibold;
   }
 }

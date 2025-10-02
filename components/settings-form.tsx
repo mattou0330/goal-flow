@@ -7,48 +7,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { updateSettings, updateEmail, updatePassword, type UserSettings } from "@/app/actions/settings"
+import { updateEmail, updatePassword } from "@/app/actions/settings"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
-const themeColors = [
-  { value: "blue", label: "ブルー", color: "oklch(0.65 0.15 190)" },
-  { value: "green", label: "グリーン", color: "oklch(0.6 0.15 150)" },
-  { value: "purple", label: "パープル", color: "oklch(0.58 0.15 270)" },
-  { value: "orange", label: "オレンジ", color: "oklch(0.65 0.18 60)" },
-  { value: "red", label: "レッド", color: "oklch(0.62 0.18 25)" },
-]
-
 export function SettingsForm({
-  initialSettings,
   userEmail,
 }: {
-  initialSettings: UserSettings
   userEmail: string
 }) {
   const router = useRouter()
-  const [themeColor, setThemeColor] = useState(initialSettings.theme_color)
-  const [weekStartDay, setWeekStartDay] = useState(initialSettings.week_start_day)
   const [newEmail, setNewEmail] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
-
-  const handleThemeUpdate = async () => {
-    setIsLoading(true)
-    setMessage(null)
-    const result = await updateSettings({ theme_color: themeColor, week_start_day: weekStartDay })
-    setIsLoading(false)
-
-    if (result.success) {
-      setMessage({ type: "success", text: "設定を更新しました" })
-      router.refresh()
-    } else {
-      setMessage({ type: "error", text: result.error || "更新に失敗しました" })
-    }
-  }
 
   const handleEmailUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -108,59 +81,6 @@ export function SettingsForm({
           {message.text}
         </div>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>外観設定</CardTitle>
-          <CardDescription>アプリケーションの見た目をカスタマイズします</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <Label>ベースカラー</Label>
-            <RadioGroup
-              value={themeColor}
-              onValueChange={setThemeColor}
-              className="grid grid-cols-2 md:grid-cols-5 gap-4"
-            >
-              {themeColors.map((theme) => (
-                <div key={theme.value}>
-                  <RadioGroupItem value={theme.value} id={theme.value} className="peer sr-only" />
-                  <Label
-                    htmlFor={theme.value}
-                    className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-card p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer transition-colors"
-                  >
-                    <div className="w-12 h-12 rounded-full mb-2" style={{ backgroundColor: theme.color }} />
-                    <span className="text-sm font-medium">{theme.label}</span>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-3">
-            <Label>週の始まり</Label>
-            <RadioGroup value={weekStartDay} onValueChange={setWeekStartDay} className="flex gap-4">
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="monday" id="monday" />
-                <Label htmlFor="monday" className="cursor-pointer">
-                  月曜日
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="sunday" id="sunday" />
-                <Label htmlFor="sunday" className="cursor-pointer">
-                  日曜日
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <Button onClick={handleThemeUpdate} disabled={isLoading} className="w-full md:w-auto">
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            設定を保存
-          </Button>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>

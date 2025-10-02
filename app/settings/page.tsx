@@ -1,4 +1,3 @@
-import { getSettings } from "@/app/actions/settings"
 import { SettingsForm } from "@/components/settings-form"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { redirect } from "next/navigation"
@@ -14,8 +13,6 @@ export default async function SettingsPage() {
     redirect("/login")
   }
 
-  const settings = await getSettings()
-
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader />
@@ -25,10 +22,7 @@ export default async function SettingsPage() {
           <p className="text-muted-foreground">アプリケーションの設定を管理します</p>
         </div>
 
-        <SettingsForm
-          initialSettings={settings || { theme_color: "blue", week_start_day: "monday" }}
-          userEmail={user.email || ""}
-        />
+        <SettingsForm userEmail={user.email || ""} />
       </main>
     </div>
   )

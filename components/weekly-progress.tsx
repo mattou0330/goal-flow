@@ -158,7 +158,10 @@ export function WeeklyProgressComponent() {
             <p className="text-center text-muted-foreground text-sm">目標が設定されていません</p>
           ) : (
             progress.map((item, index) => (
-              <div key={index} className="flex justify-between items-center px-4 py-3 rounded-lg bg-muted/50">
+              <div
+                key={index}
+                className="flex justify-between items-center px-4 py-3 rounded-lg bg-muted/50 border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+              >
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-foreground">{item.metric_name}</span>
                   <span className="text-xs text-muted-foreground">

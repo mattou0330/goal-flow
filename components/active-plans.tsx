@@ -86,7 +86,7 @@ export function ActivePlans() {
               key={plan.id}
               draggable
               onDragStart={(e) => handleDragStart(e, plan)}
-              className="p-3 rounded-lg bg-muted/50 cursor-move hover:bg-muted transition-colors group"
+              className="p-3 rounded-lg bg-muted/50 cursor-move hover:bg-muted transition-colors group border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">

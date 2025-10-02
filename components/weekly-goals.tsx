@@ -156,7 +156,7 @@ export function WeeklyGoals() {
                 key={goal.id}
                 draggable={!isEditing}
                 onDragStart={(e) => handleDragStart(e, goal)}
-                className="p-3 rounded-lg bg-muted/50 space-y-2 group cursor-move hover:bg-muted transition-colors"
+                className="p-3 rounded-lg bg-muted/50 space-y-2 group cursor-move hover:bg-muted transition-colors border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
