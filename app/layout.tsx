@@ -7,7 +7,7 @@ import "./globals.css"
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700"],
 })
 
 export const metadata: Metadata = {
