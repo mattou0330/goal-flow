@@ -3,40 +3,25 @@
 import type React from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, memo } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { getActivePlans, type Plan, type Goal } from "@/app/actions/goals"
 import { Badge } from "@/components/ui/badge"
 
 type PlanWithGoal = Plan & { goals: Goal }
 
-export function ActivePlans() {
+export const ActivePlans = memo(function ActivePlans() {
   const [plans, setPlans] = useState<PlanWithGoal[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadPlans()
-
-    const handleRecordAdded = () => {
-      console.log("[v0] Record added event received in ActivePlans")
-      loadPlans()
-    }
-
-    window.addEventListener("recordAdded", handleRecordAdded)
-
-    return () => {
-      window.removeEventListener("recordAdded", handleRecordAdded)
-    }
-  }, [])
-
-  const loadPlans = async () => {
+  const loadPlans = useCallback(async () => {
     try {
       setLoading(true)
       const data = await getActivePlans()
       setPlans(data)
     } catch (error) {
-      console.error("[v0] Failed to load active plans:", error)
+      console.error("Failed to load active plans:", error)
       toast({
         title: "エラー",
         description: "プランの読み込みに失敗しました",
@@ -45,7 +30,21 @@ export function ActivePlans() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    loadPlans()
+
+    const handleRecordAdded = () => {
+      loadPlans()
+    }
+
+    window.addEventListener("recordAdded", handleRecordAdded)
+
+    return () => {
+      window.removeEventListener("recordAdded", handleRecordAdded)
+    }
+  }, [loadPlans])
 
   const handleDragStart = (e: React.DragEvent, plan: PlanWithGoal) => {
     e.dataTransfer.effectAllowed = "copy"
@@ -114,4 +113,4 @@ export function ActivePlans() {
       </CardContent>
     </Card>
   )
-}
+})

@@ -1136,9 +1136,27 @@ export async function getGoalDeletionInfo(id: string) {
     recordsCount = recCount || 0
   }
 
+  const { count: logsCount } = await supabase
+    .from("goal_logs")
+    .select("*", { count: "exact", head: true })
+    .eq("goal_id", id)
+
+  const { count: targetsCount } = await supabase
+    .from("goal_weekly_targets")
+    .select("*", { count: "exact", head: true })
+    .eq("goal_id", id)
+
+  const { count: reviewsCount } = await supabase
+    .from("goal_reviews")
+    .select("*", { count: "exact", head: true })
+    .eq("goal_id", id)
+
   return {
     plansCount: plans?.length || 0,
     weeklyGoalsCount,
     recordsCount,
+    logsCount: logsCount || 0,
+    targetsCount: targetsCount || 0,
+    reviewsCount: reviewsCount || 0,
   }
 }

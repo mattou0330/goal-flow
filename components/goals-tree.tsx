@@ -2,17 +2,18 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback, memo } from "react"
 import { Card } from "@/components/ui/card"
-import { ChevronRight, ChevronDown, GripVertical, Target, TrendingUp, BookOpen } from "lucide-react"
+import { ChevronRight, ChevronDown, GripVertical } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Goal, Plan } from "@/app/actions/goals"
-import { updateGoal, getPlans } from "@/app/actions/goals"
+import { updateGoal } from "@/app/actions/goals"
 
 interface GoalsTreeProps {
   goals: Goal[]
   selectedGoalId?: string | null
   onSelectGoal?: (id: string) => void
+  allPlans?: Plan[]
 }
 
 type DropPosition = "before" | "after" | "inside"
@@ -22,118 +23,105 @@ interface DropIndicator {
   position: DropPosition
 }
 
-export function GoalsTree({
+export const GoalsTree = memo(function GoalsTree({
   goals: initialGoals,
   selectedGoalId: initialSelectedGoalId,
   onSelectGoal,
+  allPlans = [],
 }: GoalsTreeProps) {
   const [goals, setGoals] = useState<Goal[]>(initialGoals)
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(initialSelectedGoalId || null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(initialGoals.map((g) => g.id)))
   const [expandedPlanIds, setExpandedPlanIds] = useState<Set<string>>(new Set())
-  const [goalPlans, setGoalPlans] = useState<Map<string, Plan[]>>(new Map())
   const [draggedGoalId, setDraggedGoalId] = useState<string | null>(null)
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null)
+
+  const goalPlansMap = useMemo(() => {
+    const map = new Map<string, Plan[]>()
+    allPlans.forEach((plan) => {
+      const existing = map.get(plan.goal_id) || []
+      map.set(plan.goal_id, [...existing, plan])
+    })
+    return map
+  }, [allPlans])
 
   useEffect(() => {
     setGoals(initialGoals)
   }, [initialGoals])
 
-  useEffect(() => {
-    const loadPlans = async () => {
-      const plansMap = new Map<string, Plan[]>()
-
-      for (const goal of goals) {
-        try {
-          const plans = await getPlans(goal.id)
-          if (plans.length > 0) {
-            plansMap.set(goal.id, plans)
-          }
-        } catch (error) {
-          console.error(`Failed to load plans for goal ${goal.id}:`, error)
-        }
+  const handleSelectGoal = useCallback(
+    (id: string) => {
+      setSelectedGoalId(id)
+      if (onSelectGoal) {
+        onSelectGoal(id)
       }
+    },
+    [onSelectGoal],
+  )
 
-      setGoalPlans(plansMap)
-    }
+  const treeData = useMemo(() => {
+    const buildTree = (goals: Goal[]): (Goal & { children?: Goal[] })[] => {
+      const goalMap = new Map<string, Goal & { children?: Goal[] }>()
+      const rootGoals: (Goal & { children?: Goal[] })[] = []
 
-    loadPlans()
-  }, [goals])
+      goals.forEach((goal) => {
+        goalMap.set(goal.id, { ...goal, children: [] })
+      })
 
-  const handleSelectGoal = (id: string) => {
-    setSelectedGoalId(id)
-    if (onSelectGoal) {
-      onSelectGoal(id)
-    }
-  }
-
-  const buildTree = (goals: Goal[]): (Goal & { children?: Goal[] })[] => {
-    const goalMap = new Map<string, Goal & { children?: Goal[] }>()
-    const rootGoals: (Goal & { children?: Goal[] })[] = []
-
-    goals.forEach((goal) => {
-      goalMap.set(goal.id, { ...goal, children: [] })
-    })
-
-    goals.forEach((goal) => {
-      const node = goalMap.get(goal.id)!
-      if (goal.parent_id) {
-        const parent = goalMap.get(goal.parent_id)
-        if (parent) {
-          parent.children = parent.children || []
-          parent.children.push(node)
+      goals.forEach((goal) => {
+        const node = goalMap.get(goal.id)!
+        if (goal.parent_id) {
+          const parent = goalMap.get(goal.parent_id)
+          if (parent) {
+            parent.children = parent.children || []
+            parent.children.push(node)
+          } else {
+            rootGoals.push(node)
+          }
         } else {
           rootGoals.push(node)
         }
-      } else {
-        rootGoals.push(node)
-      }
-    })
-
-    const sortByDisplayOrder = (nodes: (Goal & { children?: Goal[] })[]) => {
-      nodes.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
-      nodes.forEach((node) => {
-        if (node.children && node.children.length > 0) {
-          sortByDisplayOrder(node.children)
-        }
       })
+
+      const sortByDisplayOrder = (nodes: (Goal & { children?: Goal[] })[]) => {
+        nodes.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+        nodes.forEach((node) => {
+          if (node.children && node.children.length > 0) {
+            sortByDisplayOrder(node.children)
+          }
+        })
+      }
+
+      sortByDisplayOrder(rootGoals)
+      return rootGoals
     }
 
-    sortByDisplayOrder(rootGoals)
-    return rootGoals
-  }
+    return buildTree(goals)
+  }, [goals])
 
-  const treeData = buildTree(goals)
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const newExpanded = new Set(prev)
+      if (newExpanded.has(id)) {
+        newExpanded.delete(id)
+      } else {
+        newExpanded.add(id)
+      }
+      return newExpanded
+    })
+  }, [])
 
-  const getIcon = (goal: Goal) => {
-    if (goal.status === "completed") {
-      return <Target className="h-4 w-4" />
-    }
-    if (goal.progress > 50) {
-      return <TrendingUp className="h-4 w-4" />
-    }
-    return <BookOpen className="h-4 w-4" />
-  }
-
-  const toggleExpand = (id: string) => {
-    const newExpanded = new Set(expandedIds)
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id)
-    } else {
-      newExpanded.add(id)
-    }
-    setExpandedIds(newExpanded)
-  }
-
-  const togglePlanExpand = (goalId: string) => {
-    const newExpanded = new Set(expandedPlanIds)
-    if (newExpanded.has(goalId)) {
-      newExpanded.delete(goalId)
-    } else {
-      newExpanded.add(goalId)
-    }
-    setExpandedPlanIds(newExpanded)
-  }
+  const togglePlanExpand = useCallback((goalId: string) => {
+    setExpandedPlanIds((prev) => {
+      const newExpanded = new Set(prev)
+      if (newExpanded.has(goalId)) {
+        newExpanded.delete(goalId)
+      } else {
+        newExpanded.add(goalId)
+      }
+      return newExpanded
+    })
+  }, [])
 
   const handleDragStart = (e: React.DragEvent, goalId: string) => {
     e.stopPropagation()
@@ -283,118 +271,131 @@ export function GoalsTree({
     }
   }
 
-  const renderGoal = (goal: Goal & { children?: Goal[] }, level = 0) => {
-    const hasChildren = goal.children && goal.children.length > 0
-    const plans = goalPlans.get(goal.id) || []
-    const hasPlans = plans.length > 0
-    const isExpanded = expandedIds.has(goal.id)
-    const isPlansExpanded = expandedPlanIds.has(goal.id)
-    const isSelected = selectedGoalId === goal.id
-    const isDragging = draggedGoalId === goal.id
-    const showDropBefore = dropIndicator?.goalId === goal.id && dropIndicator.position === "before"
-    const showDropAfter = dropIndicator?.goalId === goal.id && dropIndicator.position === "after"
-    const showDropInside = dropIndicator?.goalId === goal.id && dropIndicator.position === "inside"
+  const renderGoal = useCallback(
+    (goal: Goal & { children?: Goal[] }, level = 0) => {
+      const hasChildren = goal.children && goal.children.length > 0
+      const plans = goalPlansMap.get(goal.id) || []
+      const hasPlans = plans.length > 0
+      const isExpanded = expandedIds.has(goal.id)
+      const isPlansExpanded = expandedPlanIds.has(goal.id)
+      const isSelected = selectedGoalId === goal.id
+      const isDragging = draggedGoalId === goal.id
+      const showDropBefore = dropIndicator?.goalId === goal.id && dropIndicator.position === "before"
+      const showDropAfter = dropIndicator?.goalId === goal.id && dropIndicator.position === "after"
+      const showDropInside = dropIndicator?.goalId === goal.id && dropIndicator.position === "inside"
 
-    return (
-      <div key={goal.id} className="relative">
-        {showDropBefore && (
-          <div
-            className="absolute -top-1 left-0 right-0 h-0.5 bg-primary rounded-full z-10"
-            style={{ marginLeft: `${level * 24}px` }}
-          >
-            <div className="absolute -left-1 -top-1 w-2 h-2 bg-primary rounded-full" />
-          </div>
-        )}
-
-        <div
-          className={cn(
-            "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all group relative",
-            "hover:bg-accent/50",
-            isSelected && "bg-primary/10 hover:bg-primary/15",
-            isDragging && "opacity-30",
-            showDropInside && "bg-primary/20 ring-2 ring-primary ring-inset",
-            level > 0 && "ml-6",
-          )}
-          onClick={() => handleSelectGoal(goal.id)}
-          onDragOver={(e) => handleDragOver(e, goal.id)}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, goal.id)}
-        >
-          <div
-            draggable
-            onDragStart={(e) => handleDragStart(e, goal.id)}
-            className="cursor-grab active:cursor-grabbing touch-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-          </div>
-
-          {hasChildren || hasPlans ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                if (hasChildren) {
-                  toggleExpand(goal.id)
-                }
-                if (hasPlans) {
-                  togglePlanExpand(goal.id)
-                }
-              }}
-              className="p-0.5 hover:bg-accent rounded transition-colors"
+      return (
+        <div key={goal.id} className="relative">
+          {showDropBefore && (
+            <div
+              className="absolute -top-1 left-0 right-0 h-0.5 bg-primary rounded-full z-10"
+              style={{ marginLeft: `${level * 24}px` }}
             >
-              {(isExpanded && hasChildren) || (isPlansExpanded && hasPlans) ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
-          ) : (
-            <div className="w-5" />
+              <div className="absolute -left-1 -top-1 w-2 h-2 bg-primary rounded-full" />
+            </div>
           )}
 
-          <span className={cn("text-sm font-medium flex-1", isSelected ? "text-foreground" : "text-foreground/90")}>
-            {goal.title}
-          </span>
-        </div>
-
-        {showDropAfter && (
           <div
-            className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full z-10"
-            style={{ marginLeft: `${level * 24}px` }}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all group relative",
+              "hover:bg-accent/50",
+              isSelected && "bg-primary/10 hover:bg-primary/15",
+              isDragging && "opacity-30",
+              showDropInside && "bg-primary/20 ring-2 ring-primary ring-inset",
+              level > 0 && "ml-6",
+            )}
+            onClick={() => handleSelectGoal(goal.id)}
+            onDragOver={(e) => handleDragOver(e, goal.id)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, goal.id)}
           >
-            <div className="absolute -left-1 -top-1 w-2 h-2 bg-primary rounded-full" />
-          </div>
-        )}
+            <div
+              draggable
+              onDragStart={(e) => handleDragStart(e, goal.id)}
+              className="cursor-grab active:cursor-grabbing touch-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+            </div>
 
-        {hasPlans && isPlansExpanded && (
-          <div className="mt-1" style={{ marginLeft: `${(level + 1) * 24}px` }}>
-            {plans.map((plan) => (
-              <div
-                key={plan.id}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
-                  "hover:bg-accent/30",
-                  "ml-6",
-                )}
+            {hasChildren || hasPlans ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (hasChildren) {
+                    toggleExpand(goal.id)
+                  }
+                  if (hasPlans) {
+                    togglePlanExpand(goal.id)
+                  }
+                }}
+                className="p-0.5 hover:bg-accent rounded transition-colors"
               >
-                <div className="w-5" />
-                <span className="text-xs text-muted-foreground flex-1">{plan.title}</span>
-                {plan.target_value && plan.unit && (
-                  <span className="text-xs text-muted-foreground">
-                    {plan.current_value || 0}/{plan.target_value} {plan.unit}
-                  </span>
+                {(isExpanded && hasChildren) || (isPlansExpanded && hasPlans) ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
-              </div>
-            ))}
-          </div>
-        )}
+              </button>
+            ) : (
+              <div className="w-5" />
+            )}
 
-        {hasChildren && isExpanded && (
-          <div className="mt-1">{goal.children!.map((child) => renderGoal(child, level + 1))}</div>
-        )}
-      </div>
-    )
-  }
+            <span className={cn("text-sm font-medium flex-1", isSelected ? "text-foreground" : "text-foreground/90")}>
+              {goal.title}
+            </span>
+          </div>
+
+          {showDropAfter && (
+            <div
+              className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full z-10"
+              style={{ marginLeft: `${level * 24}px` }}
+            >
+              <div className="absolute -left-1 -top-1 w-2 h-2 bg-primary rounded-full" />
+            </div>
+          )}
+
+          {hasPlans && isPlansExpanded && (
+            <div className="mt-1" style={{ marginLeft: `${(level + 1) * 24}px` }}>
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
+                    "hover:bg-accent/30",
+                    "ml-6",
+                  )}
+                >
+                  <div className="w-5" />
+                  <span className="text-xs text-muted-foreground flex-1">{plan.title}</span>
+                  {plan.target_value && plan.unit && (
+                    <span className="text-xs text-muted-foreground">
+                      {plan.current_value || 0}/{plan.target_value} {plan.unit}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {hasChildren && isExpanded && (
+            <div className="mt-1">{goal.children!.map((child) => renderGoal(child, level + 1))}</div>
+          )}
+        </div>
+      )
+    },
+    [
+      goalPlansMap,
+      expandedIds,
+      expandedPlanIds,
+      selectedGoalId,
+      draggedGoalId,
+      dropIndicator,
+      handleSelectGoal,
+      toggleExpand,
+      togglePlanExpand,
+    ],
+  )
 
   return (
     <Card
@@ -417,4 +418,4 @@ export function GoalsTree({
       )}
     </Card>
   )
-}
+})

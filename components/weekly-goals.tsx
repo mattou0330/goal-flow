@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Trash2, Edit2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, memo } from "react"
 import { useToast } from "@/hooks/use-toast"
 import {
   getCurrentWeekGoals,
@@ -20,35 +20,20 @@ import { Badge } from "@/components/ui/badge"
 
 type WeeklyGoalWithPlan = WeeklyGoal & { plans: Plan }
 
-export function WeeklyGoals() {
+export const WeeklyGoals = memo(function WeeklyGoals() {
   const [goals, setGoals] = useState<WeeklyGoalWithPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [editingGoal, setEditingGoal] = useState<string | null>(null)
   const [editValue, setEditValue] = useState("")
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadGoals()
-
-    const handleRecordAdded = () => {
-      console.log("[v0] Record added event received in WeeklyGoals")
-      loadGoals()
-    }
-
-    window.addEventListener("recordAdded", handleRecordAdded)
-
-    return () => {
-      window.removeEventListener("recordAdded", handleRecordAdded)
-    }
-  }, [])
-
-  const loadGoals = async () => {
+  const loadGoals = useCallback(async () => {
     try {
       setLoading(true)
       const data = await getCurrentWeekGoals()
       setGoals(data)
     } catch (error) {
-      console.error("[v0] Failed to load weekly goals:", error)
+      console.error("Failed to load weekly goals:", error)
       toast({
         title: "エラー",
         description: "今週の目標の読み込みに失敗しました",
@@ -57,7 +42,21 @@ export function WeeklyGoals() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    loadGoals()
+
+    const handleRecordAdded = () => {
+      loadGoals()
+    }
+
+    window.addEventListener("recordAdded", handleRecordAdded)
+
+    return () => {
+      window.removeEventListener("recordAdded", handleRecordAdded)
+    }
+  }, [loadGoals])
 
   const handleUpdateCurrentValue = async (id: string, currentValue: number) => {
     try {
@@ -239,4 +238,4 @@ export function WeeklyGoals() {
       </CardContent>
     </Card>
   )
-}
+})

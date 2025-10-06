@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { useState, useEffect } from "react"
 import { getGoals, createGoal, type Goal } from "@/app/actions/goals"
+import { getAllPlans, type Plan } from "@/app/actions/plans"
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([])
+  const [plans, setPlans] = useState<Plan[]>([])
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -33,11 +35,14 @@ export default function GoalsPage() {
   useEffect(() => {
     const loadGoals = async () => {
       try {
-        const data = await getGoals()
-        setGoals(data)
-        if (data.length > 0) {
-          if (!selectedGoalId || !data.find((g) => g.id === selectedGoalId)) {
-            setSelectedGoalId(data[0].id)
+        const [goalsData, plansData] = await Promise.all([getGoals(), getAllPlans()])
+
+        setGoals(goalsData)
+        setPlans(plansData)
+
+        if (goalsData.length > 0) {
+          if (!selectedGoalId || !goalsData.find((g) => g.id === selectedGoalId)) {
+            setSelectedGoalId(goalsData[0].id)
           }
         } else {
           setSelectedGoalId(null)
@@ -174,7 +179,12 @@ export default function GoalsPage() {
 
         <div className="grid gap-6 lg:grid-cols-[350px_1fr]">
           <div className="lg:col-span-1">
-            <GoalsTree goals={goals} selectedGoalId={selectedGoalId} onSelectGoal={setSelectedGoalId} />
+            <GoalsTree
+              goals={goals}
+              selectedGoalId={selectedGoalId}
+              onSelectGoal={setSelectedGoalId}
+              allPlans={plans}
+            />
           </div>
 
           <div className="lg:col-span-1">
