@@ -59,7 +59,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       startDay.setHours(0, 0, 0, 0)
       return startDay.toISOString().split("T")[0]
     } catch (error) {
-      console.error("[v0] Failed to calculate week start date:", error)
+      console.error("Failed to calculate week start date:", error)
       const now = new Date()
       const dayOfWeek = now.getDay()
       const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
@@ -74,10 +74,9 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     try {
       setLoading(true)
       const data = await getCurrentWeekGoals()
-      console.log("[v0] Loaded weekly goals:", data)
       setGoals(data)
     } catch (error) {
-      console.error("[v0] Failed to load weekly goals:", error)
+      console.error("Failed to load weekly goals:", error)
       toast({
         title: "エラー",
         description: "今週の目標の読み込みに失敗しました",
@@ -93,14 +92,13 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       const data = await getActivePlans()
       setPlans(data)
     } catch (error) {
-      console.error("[v0] Failed to load plans:", error)
+      console.error("Failed to load plans:", error)
     }
   }, [])
 
   useEffect(() => {
     const initWeekStartDate = async () => {
       const date = await calculateWeekStartDate()
-      console.log("[v0] Calculated week start date:", date)
       setWeekStartDate(date)
     }
     initWeekStartDate()
@@ -124,15 +122,15 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const handleUpdateCurrentValue = async (id: string, currentValue: number) => {
     try {
       await updateWeeklyGoal(id, { current_value: currentValue })
-      await loadGoals()
       router.refresh()
+      await loadGoals()
       setEditingGoal(null)
       toast({
         title: "更新しました",
         description: "進捗を更新しました",
       })
     } catch (error) {
-      console.error("[v0] Failed to update weekly goal:", error)
+      console.error("Failed to update weekly goal:", error)
       toast({
         title: "エラー",
         description: "進捗の更新に失敗しました",
@@ -144,14 +142,14 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const handleRemoveGoal = async (id: string) => {
     try {
       await deleteWeeklyGoal(id)
-      await loadGoals()
       router.refresh()
+      await loadGoals()
       toast({
         title: "削除しました",
         description: "今週の目標を削除しました",
       })
     } catch (error) {
-      console.error("[v0] Failed to delete weekly goal:", error)
+      console.error("Failed to delete weekly goal:", error)
       toast({
         title: "エラー",
         description: "目標の削除に失敗しました",
@@ -235,9 +233,8 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   }
 
   const handleGoalCreated = useCallback(async () => {
-    console.log("[v0] Goal created, reloading goals...")
-    await loadGoals()
     router.refresh()
+    await loadGoals()
   }, [loadGoals, router])
 
   if (loading) {

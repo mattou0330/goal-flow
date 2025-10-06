@@ -657,6 +657,7 @@ export async function createWeeklyGoal(weeklyGoal: {
     console.log("[v0] Weekly goal created successfully:", data)
     revalidatePath("/")
     revalidatePath("/goals")
+    revalidatePath("/review")
     return data as WeeklyGoal
   } catch (error) {
     console.error("[v0] Error in createWeeklyGoal:", error)
@@ -745,6 +746,7 @@ export async function createCustomWeeklyGoal(customGoal: {
     console.log("[v0] Custom weekly goal created successfully:", weeklyGoal)
     revalidatePath("/goals")
     revalidatePath("/")
+    revalidatePath("/review")
     return weeklyGoal as WeeklyGoal
   } catch (error) {
     console.error("[v0] Error in createCustomWeeklyGoal:", error)
