@@ -17,6 +17,7 @@ import {
   type Plan,
   type Goal,
 } from "@/app/actions/goals"
+import { getProfile } from "@/app/profile/actions"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { CreateWeeklyGoalDialog } from "@/components/create-weekly-goal-dialog"
@@ -33,25 +34,48 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const [selectedPlan, setSelectedPlan] = useState<PlanWithGoal | null>(null)
   const [plans, setPlans] = useState<PlanWithGoal[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
+  const [weekStartDate, setWeekStartDate] = useState<string>("")
   const { toast } = useToast()
 
-  const getWeekStartDate = useCallback(() => {
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-    const monday = new Date(now)
-    monday.setDate(now.getDate() + diff)
-    monday.setHours(0, 0, 0, 0)
-    return monday.toISOString().split("T")[0]
+  const calculateWeekStartDate = useCallback(async () => {
+    try {
+      const profile = await getProfile()
+      const weekStartDay = profile?.week_start_day || "monday"
+
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+
+      let diff: number
+      if (weekStartDay === "sunday") {
+        diff = -dayOfWeek
+      } else {
+        diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      }
+
+      const startDay = new Date(now)
+      startDay.setDate(now.getDate() + diff)
+      startDay.setHours(0, 0, 0, 0)
+      return startDay.toISOString().split("T")[0]
+    } catch (error) {
+      console.error("[v0] Failed to calculate week start date:", error)
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      const monday = new Date(now)
+      monday.setDate(now.getDate() + diff)
+      monday.setHours(0, 0, 0, 0)
+      return monday.toISOString().split("T")[0]
+    }
   }, [])
 
   const loadGoals = useCallback(async () => {
     try {
       setLoading(true)
       const data = await getCurrentWeekGoals()
+      console.log("[v0] Loaded weekly goals:", data)
       setGoals(data)
     } catch (error) {
-      console.error("Failed to load weekly goals:", error)
+      console.error("[v0] Failed to load weekly goals:", error)
       toast({
         title: "エラー",
         description: "今週の目標の読み込みに失敗しました",
@@ -67,9 +91,18 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       const data = await getActivePlans()
       setPlans(data)
     } catch (error) {
-      console.error("Failed to load plans:", error)
+      console.error("[v0] Failed to load plans:", error)
     }
   }, [])
+
+  useEffect(() => {
+    const initWeekStartDate = async () => {
+      const date = await calculateWeekStartDate()
+      console.log("[v0] Calculated week start date:", date)
+      setWeekStartDate(date)
+    }
+    initWeekStartDate()
+  }, [calculateWeekStartDate])
 
   useEffect(() => {
     loadGoals()
@@ -193,7 +226,6 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       return
     }
 
-    // 最初のプランを選択
     setSelectedPlan(plans[0])
     setCreateDialogOpen(true)
   }
@@ -342,13 +374,15 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
         </CardContent>
       </Card>
 
-      <CreateWeeklyGoalDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        plan={selectedPlan}
-        weekStartDate={getWeekStartDate()}
-        onSuccess={loadGoals}
-      />
+      {weekStartDate && (
+        <CreateWeeklyGoalDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          plan={selectedPlan}
+          weekStartDate={weekStartDate}
+          onSuccess={loadGoals}
+        />
+      )}
     </>
   )
 })
