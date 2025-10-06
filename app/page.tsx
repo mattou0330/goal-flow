@@ -4,6 +4,9 @@ import { RecentRecords } from "@/components/recent-records"
 import { WeeklyGoals } from "@/components/weekly-goals"
 import { ActivePlans } from "@/components/active-plans"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
