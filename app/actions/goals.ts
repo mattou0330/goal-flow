@@ -573,19 +573,31 @@ export async function getWeeklyGoalsByPlan(planId: string) {
 }
 
 // 週次目標の取得（今週分）
-export async function getCurrentWeekGoals() {
+export async function getCurrentWeekGoals(weekOffset = 0) {
   const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) throw new Error("認証が必要です")
 
-  // 今週の月曜日を計算
+  const { data: settings } = await supabase.from("profiles").select("week_start_day").eq("user_id", user.id).single()
+
+  const weekStartDay = settings?.week_start_day || "monday"
+
+  // 指定された週の開始日を計算
   const now = new Date()
   const dayOfWeek = now.getDay()
-  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+
+  let diff: number
+  if (weekStartDay === "sunday") {
+    diff = -dayOfWeek
+  } else {
+    // 月曜始まり
+    diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  }
+
   const monday = new Date(now)
-  monday.setDate(now.getDate() + diff)
+  monday.setDate(now.getDate() + diff + weekOffset * 7)
   monday.setHours(0, 0, 0, 0)
 
   const weekStart = monday.toISOString().split("T")[0]
@@ -651,6 +663,94 @@ export async function createWeeklyGoal(weeklyGoal: {
   }
 }
 
+// カスタム週次目標の作成（プランなしで作成する場合）
+export async function createCustomWeeklyGoal(customGoal: {
+  title: string
+  unit: string
+  week_start_date: string
+  target_value: number
+  notes?: string
+}) {
+  console.log("[v0] Creating custom weekly goal:", customGoal)
+
+  try {
+    const supabase = createServerClient(await cookies())
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("認証が必要です")
+
+    let customGoalId: string
+
+    // "カスタム目標"という名前のゴールを探す
+    const { data: existingGoal } = await supabase
+      .from("goals")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("title", "カスタム目標")
+      .single()
+
+    if (existingGoal) {
+      customGoalId = existingGoal.id
+    } else {
+      // カスタム目標用のゴールを作成
+      const { data: newGoal, error: goalError } = await supabase
+        .from("goals")
+        .insert({
+          title: "カスタム目標",
+          description: "プランに紐付かない単発の目標",
+          status: "active",
+          user_id: user.id,
+        })
+        .select()
+        .single()
+
+      if (goalError) throw goalError
+      customGoalId = newGoal.id
+    }
+
+    const { data: plan, error: planError } = await supabase
+      .from("plans")
+      .insert({
+        goal_id: customGoalId,
+        title: customGoal.title,
+        description: "カスタム週次目標",
+        status: "in_progress",
+        priority: "medium",
+        unit: customGoal.unit,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (planError) throw planError
+
+    const { data: weeklyGoal, error: weeklyGoalError } = await supabase
+      .from("weekly_goals")
+      .insert({
+        plan_id: plan.id,
+        week_start_date: customGoal.week_start_date,
+        target_value: customGoal.target_value,
+        current_value: 0,
+        status: "active",
+        notes: customGoal.notes || null,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (weeklyGoalError) throw weeklyGoalError
+
+    console.log("[v0] Custom weekly goal created successfully:", weeklyGoal)
+    revalidatePath("/goals")
+    revalidatePath("/")
+    return weeklyGoal as WeeklyGoal
+  } catch (error) {
+    console.error("[v0] Error in createCustomWeeklyGoal:", error)
+    throw error
+  }
+}
+
 // 週次目標の更新
 export async function updateWeeklyGoal(id: string, updates: Partial<WeeklyGoal>) {
   const supabase = createServerClient(await cookies())
@@ -688,36 +788,47 @@ export async function getWeeklyGoalsByGoal(goalId: string) {
 
   const { data: plans } = await supabase.from("plans").select("id").eq("goal_id", goalId).eq("user_id", user.id)
 
-  const weeklyGoalsCount = 0
-  const recordsCount = 0
+  let weeklyGoalsCount = 0
+  let recordsCount = 0
 
   if (plans && plans.length > 0) {
     const planIds = plans.map((p) => p.id)
 
-    const { data, error } = await supabase
+    const { count: wgCount } = await supabase
       .from("weekly_goals")
-      .select(`
-        *,
-        plans:plan_id (
-          id,
-          title,
-          unit,
-          target_value,
-          goals:goal_id (
-            id,
-            title
-          )
-        )
-      `)
+      .select("*", { count: "exact", head: true })
       .in("plan_id", planIds)
-      .eq("user_id", user.id)
-      .order("week_start_date", { ascending: false })
 
-    if (error) throw error
-    return data as (WeeklyGoal & { plans: Plan & { goals: Goal } })[]
+    const { count: recCount } = await supabase
+      .from("records")
+      .select("*", { count: "exact", head: true })
+      .in("plan_id", planIds)
+
+    weeklyGoalsCount = wgCount || 0
+    recordsCount = recCount || 0
   }
 
-  return []
+  const { data, error } = await supabase
+    .from("weekly_goals")
+    .select(`
+      *,
+      plans:plan_id (
+        id,
+        title,
+        unit,
+        goal_id,
+        goals:goal_id (
+          id,
+          title
+        )
+      )
+    `)
+    .eq("goal_id", goalId)
+    .eq("user_id", user.id)
+    .order("week_start_date", { ascending: false })
+
+  if (error) throw error
+  return data as (WeeklyGoal & { plans: Plan & { goals: Goal } })[]
 }
 
 export async function getActivePlans() {
@@ -745,6 +856,7 @@ export async function getActivePlans() {
   return data as (Plan & { goals: Goal })[]
 }
 
+// 記録の取得
 export async function getRecentRecords(limit = 10, offset = 0) {
   const supabase = createServerClient(await cookies())
   const {
@@ -752,9 +864,38 @@ export async function getRecentRecords(limit = 10, offset = 0) {
   } = await supabase.auth.getUser()
   if (!user) throw new Error("認証が必要です")
 
+  // 1回のクエリで全ての関連データを取得
   const { data: records, error } = await supabase
     .from("records")
-    .select("*")
+    .select(`
+      *,
+      weekly_goals:weekly_goal_id (
+        id,
+        target_value,
+        current_value,
+        plan_id,
+        plans:plan_id (
+          id,
+          title,
+          unit,
+          goal_id,
+          goals:goal_id (
+            id,
+            title
+          )
+        )
+      ),
+      plans:plan_id (
+        id,
+        title,
+        unit,
+        goal_id,
+        goals:goal_id (
+          id,
+          title
+        )
+      )
+    `)
     .eq("user_id", user.id)
     .order("performed_at", { ascending: false })
     .range(offset, offset + limit - 1)
@@ -764,99 +905,7 @@ export async function getRecentRecords(limit = 10, offset = 0) {
     throw error
   }
 
-  if (!records || records.length === 0) {
-    return []
-  }
-
-  // 週次目標IDとプランIDを収集
-  const weeklyGoalIds = records
-    .filter((r) => r.weekly_goal_id)
-    .map((r) => r.weekly_goal_id)
-    .filter((id): id is string => id !== null)
-
-  const planIds = records
-    .filter((r) => r.plan_id)
-    .map((r) => r.plan_id)
-    .filter((id): id is string => id !== null)
-
-  // 週次目標を取得
-  const weeklyGoalsMap = new Map()
-  if (weeklyGoalIds.length > 0) {
-    const { data: weeklyGoals } = await supabase
-      .from("weekly_goals")
-      .select("id, target_value, current_value, plan_id")
-      .in("id", weeklyGoalIds)
-
-    if (weeklyGoals) {
-      weeklyGoals.forEach((wg) => weeklyGoalsMap.set(wg.id, wg))
-
-      // 週次目標に関連するプランIDも収集
-      weeklyGoals.forEach((wg) => {
-        if (wg.plan_id && !planIds.includes(wg.plan_id)) {
-          planIds.push(wg.plan_id)
-        }
-      })
-    }
-  }
-
-  // プランを取得
-  const plansMap = new Map()
-  if (planIds.length > 0) {
-    const { data: plans } = await supabase.from("plans").select("id, title, unit, goal_id").in("id", planIds)
-
-    if (plans) {
-      plans.forEach((p) => plansMap.set(p.id, p))
-
-      // プランに関連する目標IDを収集
-      const goalIds = plans.map((p) => p.goal_id).filter((id): id is string => id !== null)
-
-      // 目標を取得
-      if (goalIds.length > 0) {
-        const { data: goals } = await supabase.from("goals").select("id, title").in("id", goalIds)
-
-        if (goals) {
-          const goalsMap = new Map()
-          goals.forEach((g) => goalsMap.set(g.id, g))
-
-          // プランに目標情報を追加
-          plans.forEach((p) => {
-            if (p.goal_id) {
-              const goal = goalsMap.get(p.goal_id)
-              if (goal) {
-                plansMap.set(p.id, { ...p, goals: goal })
-              }
-            }
-          })
-        }
-      }
-    }
-  }
-
-  // データを結合
-  const recordsWithRelations = records.map((record) => {
-    const result: RecordWithRelations = { ...record }
-
-    if (record.weekly_goal_id) {
-      const weeklyGoal = weeklyGoalsMap.get(record.weekly_goal_id)
-      if (weeklyGoal) {
-        const plan = plansMap.get(weeklyGoal.plan_id)
-        if (plan) {
-          result.weekly_goals = { ...weeklyGoal, plans: plan }
-        }
-      }
-    }
-
-    if (record.plan_id) {
-      const plan = plansMap.get(record.plan_id)
-      if (plan) {
-        result.plans = plan
-      }
-    }
-
-    return result
-  })
-
-  return recordsWithRelations
+  return (records || []) as RecordWithRelations[]
 }
 
 export async function addRecord(record: {

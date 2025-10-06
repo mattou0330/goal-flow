@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dialog"
 import { formatTimeDisplay } from "@/lib/format-time"
 import { getRecentRecords, updateRecord, deleteRecord, type RecordWithRelations } from "@/app/actions/goals"
-import { Badge } from "@/components/ui/badge"
 
 export function RecentRecords() {
   const [records, setRecords] = useState<RecordWithRelations[]>([])
@@ -306,25 +305,15 @@ export function RecentRecords() {
                         <Clock className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <h4 className="font-semibold text-foreground">
-                            {formatTimeDisplay(record.quantity, record.unit)}
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-semibold text-foreground truncate">
+                            {planTitle || goalTitle || "記録"}　{formatTimeDisplay(record.quantity, record.unit)}
                           </h4>
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
                             {formatDateTime(record.performed_at)}
                           </span>
                         </div>
-                        {(planTitle || goalTitle) && (
-                          <div className="flex items-center gap-2 mb-1">
-                            {planTitle && (
-                              <Badge variant="secondary" className="text-xs">
-                                {planTitle}
-                              </Badge>
-                            )}
-                            {goalTitle && <span className="text-xs text-muted-foreground">{goalTitle}</span>}
-                          </div>
-                        )}
-                        {record.memo && <p className="text-sm text-muted-foreground truncate">{record.memo}</p>}
+                        {record.memo && <p className="text-sm text-muted-foreground truncate mt-1">{record.memo}</p>}
                       </div>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(record)}>

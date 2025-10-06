@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { ChevronLeft, ChevronRight, Copy, Check } from "lucide-react"
@@ -12,6 +11,7 @@ import confetti from "canvas-confetti"
 import { useToast } from "@/hooks/use-toast"
 import { getCurrentWeekGoals, type WeeklyGoal, type Plan } from "@/app/actions/goals"
 import { getSettings } from "@/app/actions/settings"
+import { CreateWeeklyGoalDialog } from "@/components/create-weekly-goal-dialog"
 
 type WeeklyGoalWithPlan = WeeklyGoal & { plans: Plan }
 
@@ -28,6 +28,7 @@ export function WeeklyReviewWizard() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
+  const [weekOffset, setWeekOffset] = useState(0)
   const [weeklyGoals, setWeeklyGoals] = useState<WeeklyGoalWithPlan[]>([])
   const [weekPeriod, setWeekPeriod] = useState<string>("")
 
@@ -44,12 +45,16 @@ export function WeeklyReviewWizard() {
 
   const [nextWeekGoals, setNextWeekGoals] = useState<WeeklyGoalData[]>([])
 
+  const [showCreateGoalDialog, setShowCreateGoalDialog] = useState(false)
+  const [selectedPlanForGoal, setSelectedPlanForGoal] = useState<string | null>(null)
+
   useEffect(() => {
     loadData()
-  }, [])
+  }, [weekOffset]) // weekOffsetが変更されたらデータを再読み込み
 
   const loadData = async () => {
     try {
+      setLoading(true)
       const settings = await getSettings()
       const weekStartDay = settings?.week_start_day || "monday"
 
@@ -64,7 +69,7 @@ export function WeeklyReviewWizard() {
       }
 
       const weekStart = new Date(now)
-      weekStart.setDate(now.getDate() + diff)
+      weekStart.setDate(now.getDate() + diff + weekOffset * 7)
       weekStart.setHours(0, 0, 0, 0)
 
       const weekEnd = new Date(weekStart)
@@ -79,7 +84,7 @@ export function WeeklyReviewWizard() {
 
       setWeekPeriod(`${formatDate(weekStart)} 〜 ${formatDate(weekEnd)}`)
 
-      const goalsData = await getCurrentWeekGoals()
+      const goalsData = await getCurrentWeekGoals(weekOffset)
       console.log("[v0] Loaded weekly goals:", goalsData)
       setWeeklyGoals(goalsData)
 
@@ -158,6 +163,19 @@ export function WeeklyReviewWizard() {
     setNextWeekGoals((goals) => goals.map((goal) => (goal.id === id ? { ...goal, [field]: value } : goal)))
   }
 
+  const handleCreateNextWeekGoal = () => {
+    setSelectedPlanForGoal(null)
+    setShowCreateGoalDialog(true)
+  }
+
+  const handleGoalCreated = () => {
+    setShowCreateGoalDialog(false)
+    loadData() // データを再読み込み
+    toast({
+      title: "目標を作成しました",
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -174,10 +192,30 @@ export function WeeklyReviewWizard() {
             <h1 className="text-3xl font-bold text-foreground">週次レビュー</h1>
             {weekPeriod && <p className="text-sm text-muted-foreground mt-1">{weekPeriod}</p>}
           </div>
-          <Button variant="outline" size="sm" onClick={handleCopyFromLastWeek} className="gap-2 bg-transparent">
-            <Copy className="h-4 w-4" />
-            前週からコピー
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
+              <Button
+                variant={weekOffset === -1 ? "default" : "outline"}
+                size="sm"
+                onClick={() => setWeekOffset(-1)}
+                className="border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+              >
+                前週
+              </Button>
+              <Button
+                variant={weekOffset === 0 ? "default" : "outline"}
+                size="sm"
+                onClick={() => setWeekOffset(0)}
+                className="border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+              >
+                今週
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleCopyFromLastWeek} className="gap-2 bg-transparent">
+              <Copy className="h-4 w-4" />
+              前週からコピー
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -349,46 +387,46 @@ export function WeeklyReviewWizard() {
 
         {currentStep === 4 && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">来週の目標</h2>
-              <p className="text-muted-foreground">来週の目標を設定しましょう</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">来週の目標</h2>
+                <p className="text-muted-foreground">来週の目標を設定しましょう</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCreateNextWeekGoal}
+                className="h-8 w-8 p-0 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-transparent"
+              >
+                <span className="text-lg">+</span>
+              </Button>
             </div>
 
             <div className="space-y-4">
-              {nextWeekGoals.map((goal) => (
-                <div key={goal.id} className="flex items-end gap-4 p-4 bg-muted/50 rounded-xl">
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor={`metric-${goal.id}`}>メトリック</Label>
-                    <Input
-                      id={`metric-${goal.id}`}
-                      value={goal.metric}
-                      onChange={(e) => updateNextWeekGoal(goal.id, "metric", e.target.value)}
-                      className="bg-background"
-                    />
+              {nextWeekGoals.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">来週の目標が設定されていません</p>
+              ) : (
+                nextWeekGoals.map((goal) => (
+                  <div
+                    key={goal.id}
+                    className="flex items-center justify-between p-4 bg-background border-4 border-black rounded-lg shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-foreground">{goal.metric}</span>
+                      <span className="px-2 py-1 bg-accent text-accent-foreground text-xs font-semibold rounded">
+                        {goal.unit}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">目標:</span>
+                      <span className="text-lg font-bold text-foreground">
+                        {goal.targetValue}
+                        {goal.unit}
+                      </span>
+                    </div>
                   </div>
-
-                  <div className="w-32 space-y-2">
-                    <Label htmlFor={`target-${goal.id}`}>目標値</Label>
-                    <Input
-                      id={`target-${goal.id}`}
-                      type="number"
-                      value={goal.targetValue}
-                      onChange={(e) => updateNextWeekGoal(goal.id, "targetValue", Number.parseFloat(e.target.value))}
-                      className="bg-background"
-                    />
-                  </div>
-
-                  <div className="w-24 space-y-2">
-                    <Label htmlFor={`unit-${goal.id}`}>単位</Label>
-                    <Input
-                      id={`unit-${goal.id}`}
-                      value={goal.unit}
-                      onChange={(e) => updateNextWeekGoal(goal.id, "unit", e.target.value)}
-                      className="bg-background"
-                    />
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -417,6 +455,14 @@ export function WeeklyReviewWizard() {
           </Button>
         )}
       </div>
+
+      <CreateWeeklyGoalDialog
+        open={showCreateGoalDialog}
+        onOpenChange={setShowCreateGoalDialog}
+        onSuccess={handleGoalCreated}
+        preselectedPlanId={selectedPlanForGoal}
+        weekOffset={1} // 来週の目標なので+1
+      />
     </div>
   )
 }
