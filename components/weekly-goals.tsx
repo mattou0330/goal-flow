@@ -234,9 +234,9 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     setCreateDialogOpen(true)
   }
 
-  const handleGoalCreated = useCallback(() => {
+  const handleGoalCreated = useCallback(async () => {
     console.log("[v0] Goal created, reloading goals...")
-    loadGoals()
+    await loadGoals()
     router.refresh()
   }, [loadGoals, router])
 
