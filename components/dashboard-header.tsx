@@ -10,8 +10,11 @@ import {
 import { User, Settings, LogOut } from "lucide-react"
 import Link from "next/link"
 import { signOut } from "@/app/actions/auth"
+import { getProfile } from "@/app/profile/actions"
 
-export function DashboardHeader() {
+export async function DashboardHeader() {
+  const profile = await getProfile()
+
   return (
     <header className="border-b-4 border-black bg-card shadow-[0px_8px_0px_0px_rgba(0,0,0,1)]">
       <div className="container mx-auto px-4 py-4 max-w-7xl">
@@ -49,8 +52,13 @@ export function DashboardHeader() {
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
               <Avatar className="h-9 w-9 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition-all">
-                <AvatarImage src="/placeholder.svg?height=36&width=36" alt="ユーザー" />
-                <AvatarFallback className="bg-primary text-primary-foreground">田中</AvatarFallback>
+                <AvatarImage
+                  src={profile?.avatar_url || "/placeholder.svg?height=36&width=36"}
+                  alt={profile?.name || "ユーザー"}
+                />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {profile?.name?.charAt(0) || "U"}
+                </AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
