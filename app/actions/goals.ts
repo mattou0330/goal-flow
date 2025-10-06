@@ -247,6 +247,24 @@ export async function getPlans(goalId: string) {
   return data as Plan[]
 }
 
+// 全てのプランの取得
+export async function getAllPlans() {
+  const supabase = createServerClient(await cookies())
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error("認証が必要です")
+
+  const { data, error } = await supabase
+    .from("plans")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+
+  if (error) throw error
+  return data as Plan[]
+}
+
 // プランの作成
 export async function createPlan(plan: {
   goal_id: string
@@ -669,6 +687,9 @@ export async function getWeeklyGoalsByGoal(goalId: string) {
   if (!user) throw new Error("認証が必要です")
 
   const { data: plans } = await supabase.from("plans").select("id").eq("goal_id", goalId).eq("user_id", user.id)
+
+  const weeklyGoalsCount = 0
+  const recordsCount = 0
 
   if (plans && plans.length > 0) {
     const planIds = plans.map((p) => p.id)

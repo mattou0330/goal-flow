@@ -8,8 +8,7 @@ import { GoalDetail } from "@/components/goal-detail"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { useState, useEffect } from "react"
-import { getGoals, createGoal, type Goal } from "@/app/actions/goals"
-import { getAllPlans, type Plan } from "@/app/actions/plans"
+import { getGoals, getAllPlans, createGoal, type Goal, type Plan } from "@/app/actions/goals"
 import {
   Dialog,
   DialogContent,
