@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
+import { put } from "@vercel/blob"
 
 export type Profile = {
   id: string
@@ -14,7 +15,7 @@ export type Profile = {
 }
 
 export async function getProfile(): Promise<Profile | null> {
-  const supabase = await createServerClient()
+  const supabase = createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -35,7 +36,7 @@ export async function updateProfile(formData: {
   avatar_url?: string | null
   birth_date?: string | null
 }): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createServerClient()
+  const supabase = createServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -44,7 +45,6 @@ export async function updateProfile(formData: {
   const { data: existingProfile } = await supabase.from("profiles").select("id").eq("user_id", user.id).maybeSingle()
 
   if (existingProfile) {
-    // 更新
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -59,7 +59,6 @@ export async function updateProfile(formData: {
       return { success: false, error: error.message }
     }
   } else {
-    // 新規作成
     const { error } = await supabase.from("profiles").insert({
       user_id: user.id,
       name: formData.name,
@@ -75,4 +74,30 @@ export async function updateProfile(formData: {
 
   revalidatePath("/profile")
   return { success: true }
+}
+
+export async function uploadAvatar(formData: FormData): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const file = formData.get("file") as File
+    if (!file) {
+      return { success: false, error: "ファイルが選択されていません" }
+    }
+
+    if (!file.type.startsWith("image/")) {
+      return { success: false, error: "画像ファイルを選択してください" }
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return { success: false, error: "ファイルサイズは5MB以下にしてください" }
+    }
+
+    const blob = await put(`avatars/${Date.now()}-${file.name}`, file, {
+      access: "public",
+    })
+
+    return { success: true, url: blob.url }
+  } catch (error) {
+    console.error("画像アップロードエラー:", error)
+    return { success: false, error: error instanceof Error ? error.message : "画像のアップロードに失敗しました" }
+  }
 }
