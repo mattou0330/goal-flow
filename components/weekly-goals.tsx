@@ -76,7 +76,6 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       const data = await getCurrentWeekGoals()
       console.log("[v0] Loaded weekly goals:", data)
       setGoals(data)
-      router.refresh()
     } catch (error) {
       console.error("[v0] Failed to load weekly goals:", error)
       toast({
@@ -87,7 +86,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     } finally {
       setLoading(false)
     }
-  }, [toast, router])
+  }, [toast])
 
   const loadPlans = useCallback(async () => {
     try {
@@ -127,6 +126,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       await updateWeeklyGoal(id, { current_value: currentValue })
       setGoals(goals.map((goal) => (goal.id === id ? { ...goal, current_value: currentValue } : goal)))
       setEditingGoal(null)
+      router.refresh()
       toast({
         title: "更新しました",
         description: "進捗を更新しました",
@@ -145,6 +145,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     try {
       await deleteWeeklyGoal(id)
       setGoals(goals.filter((goal) => goal.id !== id))
+      router.refresh()
       toast({
         title: "削除しました",
         description: "今週の目標を削除しました",
@@ -232,6 +233,11 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     setSelectedPlan(plans[0])
     setCreateDialogOpen(true)
   }
+
+  const handleGoalCreated = useCallback(() => {
+    loadGoals()
+    router.refresh()
+  }, [loadGoals, router])
 
   if (loading) {
     return (
@@ -383,7 +389,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
           onOpenChange={setCreateDialogOpen}
           plan={selectedPlan}
           weekStartDate={weekStartDate}
-          onSuccess={loadGoals}
+          onSuccess={handleGoalCreated}
         />
       )}
     </>
