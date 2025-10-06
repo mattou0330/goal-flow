@@ -124,9 +124,8 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const handleUpdateCurrentValue = async (id: string, currentValue: number) => {
     try {
       await updateWeeklyGoal(id, { current_value: currentValue })
-      setGoals(goals.map((goal) => (goal.id === id ? { ...goal, current_value: currentValue } : goal)))
+      await loadGoals()
       setEditingGoal(null)
-      router.refresh()
       toast({
         title: "更新しました",
         description: "進捗を更新しました",
@@ -144,8 +143,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const handleRemoveGoal = async (id: string) => {
     try {
       await deleteWeeklyGoal(id)
-      setGoals(goals.filter((goal) => goal.id !== id))
-      router.refresh()
+      await loadGoals()
       toast({
         title: "削除しました",
         description: "今週の目標を削除しました",
@@ -235,9 +233,9 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   }
 
   const handleGoalCreated = useCallback(() => {
+    console.log("[v0] Goal created, reloading goals...")
     loadGoals()
-    router.refresh()
-  }, [loadGoals, router])
+  }, [loadGoals])
 
   if (loading) {
     return (
