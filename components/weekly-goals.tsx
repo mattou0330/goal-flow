@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Trash2, Edit2, Plus } from "lucide-react"
 import { useEffect, useState, useCallback, memo } from "react"
+import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import {
   getCurrentWeekGoals,
@@ -35,6 +36,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const [plans, setPlans] = useState<PlanWithGoal[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
   const [weekStartDate, setWeekStartDate] = useState<string>("")
+  const router = useRouter()
   const { toast } = useToast()
 
   const calculateWeekStartDate = useCallback(async () => {
@@ -74,6 +76,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       const data = await getCurrentWeekGoals()
       console.log("[v0] Loaded weekly goals:", data)
       setGoals(data)
+      router.refresh()
     } catch (error) {
       console.error("[v0] Failed to load weekly goals:", error)
       toast({
@@ -84,7 +87,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, router])
 
   const loadPlans = useCallback(async () => {
     try {

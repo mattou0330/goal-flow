@@ -655,6 +655,7 @@ export async function createWeeklyGoal(weeklyGoal: {
     }
 
     console.log("[v0] Weekly goal created successfully:", data)
+    revalidatePath("/")
     revalidatePath("/goals")
     return data as WeeklyGoal
   } catch (error) {
