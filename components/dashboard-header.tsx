@@ -1,3 +1,5 @@
+"use client"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -10,10 +12,24 @@ import {
 import { User, Settings, LogOut } from "lucide-react"
 import Link from "next/link"
 import { signOut } from "@/app/actions/auth"
-import { getProfile } from "@/app/profile/actions"
+import { getProfile, type Profile } from "@/app/profile/actions"
+import { useState, useEffect } from "react"
 
-export async function DashboardHeader() {
-  const profile = await getProfile()
+export function DashboardHeader() {
+  const [profile, setProfile] = useState<Profile | null>(null)
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profileData = await getProfile()
+        setProfile(profileData)
+      } catch (error) {
+        console.error("Failed to load profile:", error)
+      }
+    }
+
+    loadProfile()
+  }, [])
 
   return (
     <header className="border-b-4 border-black bg-card shadow-[0px_8px_0px_0px_rgba(0,0,0,1)]">
