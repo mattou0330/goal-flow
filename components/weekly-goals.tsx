@@ -125,6 +125,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     try {
       await updateWeeklyGoal(id, { current_value: currentValue })
       await loadGoals()
+      router.refresh()
       setEditingGoal(null)
       toast({
         title: "更新しました",
@@ -144,6 +145,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     try {
       await deleteWeeklyGoal(id)
       await loadGoals()
+      router.refresh()
       toast({
         title: "削除しました",
         description: "今週の目標を削除しました",
@@ -235,7 +237,8 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const handleGoalCreated = useCallback(() => {
     console.log("[v0] Goal created, reloading goals...")
     loadGoals()
-  }, [loadGoals])
+    router.refresh()
+  }, [loadGoals, router])
 
   if (loading) {
     return (
