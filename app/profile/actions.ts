@@ -3,6 +3,7 @@
 import { createServerClient } from "@/lib/supabase"
 import { revalidatePath } from "next/cache"
 import { put } from "@vercel/blob"
+import { cookies } from "next/headers"
 
 export type Profile = {
   id: string
@@ -15,7 +16,7 @@ export type Profile = {
 }
 
 export async function getProfile(): Promise<Profile | null> {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -36,7 +37,7 @@ export async function updateProfile(formData: {
   avatar_url?: string | null
   birth_date?: string | null
 }): Promise<{ success: boolean; error?: string }> {
-  const supabase = createServerClient()
+  const supabase = createServerClient(await cookies())
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -64,6 +65,7 @@ export async function updateProfile(formData: {
       name: formData.name,
       avatar_url: formData.avatar_url,
       birth_date: formData.birth_date,
+      week_start_day: "monday",
     })
 
     if (error) {
