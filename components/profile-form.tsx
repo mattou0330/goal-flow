@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { updateProfile, uploadAvatar, type Profile } from "@/app/actions/profile"
+import { updateProfile, uploadAvatar, type Profile } from "@/app/profile/actions"
 import { Upload, Loader2 } from "lucide-react"
 
 type ProfileFormProps = {

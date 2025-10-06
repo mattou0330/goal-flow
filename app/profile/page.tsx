@@ -1,4 +1,4 @@
-import { getProfile } from "@/app/actions/profile"
+import { getProfile } from "@/app/profile/actions"
 import { ProfileForm } from "@/components/profile-form"
 import { DashboardHeader } from "@/components/dashboard-header"
 
