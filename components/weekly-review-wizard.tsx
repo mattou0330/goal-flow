@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, Copy, Check } from "lucide-react"
 import confetti from "canvas-confetti"
 import { useToast } from "@/hooks/use-toast"
 import { getCurrentWeekGoals, type WeeklyGoal, type Plan } from "@/app/actions/goals"
+import { getSettings } from "@/app/actions/settings"
 import { CreateWeeklyGoalDialog } from "@/components/create-weekly-goal-dialog"
 
 type WeeklyGoalWithPlan = WeeklyGoal & { plans: Plan }
@@ -54,17 +55,18 @@ export function WeeklyReviewWizard() {
   const loadData = async () => {
     try {
       setLoading(true)
+      const settings = await getSettings()
+      const weekStartDay = settings?.week_start_day || "monday"
 
-      const goalsData = await getCurrentWeekGoals(weekOffset)
-      console.log("[v0] Loaded weekly goals:", goalsData)
-      setWeeklyGoals(goalsData)
-
-      // 週の期間を計算（getCurrentWeekGoals内で既に計算されているロジックを再利用）
       const now = new Date()
       const dayOfWeek = now.getDay()
 
-      // デフォルトは月曜始まり
-      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      let diff: number
+      if (weekStartDay === "sunday") {
+        diff = -dayOfWeek
+      } else {
+        diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      }
 
       const weekStart = new Date(now)
       weekStart.setDate(now.getDate() + diff + weekOffset * 7)
@@ -81,6 +83,10 @@ export function WeeklyReviewWizard() {
       }
 
       setWeekPeriod(`${formatDate(weekStart)} 〜 ${formatDate(weekEnd)}`)
+
+      const goalsData = await getCurrentWeekGoals(weekOffset)
+      console.log("[v0] Loaded weekly goals:", goalsData)
+      setWeeklyGoals(goalsData)
 
       const nextGoals = goalsData.map((goal) => ({
         id: goal.id,

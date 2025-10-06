@@ -33,7 +33,6 @@ export async function signUp(formData: FormData) {
     await supabase.from("profiles").insert({
       user_id: data.user.id,
       name,
-      week_start_day: "monday", // プロフィール作成時にweek_start_dayをデフォルト値で設定
     })
   }
 

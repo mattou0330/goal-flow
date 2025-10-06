@@ -1,12 +1,17 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { User, Settings, LogOut } from "lucide-react"
 import Link from "next/link"
-import { UserAvatar } from "@/components/user-avatar"
+import { signOut } from "@/app/actions/auth"
 
-interface DashboardHeaderProps {
-  avatarUrl?: string | null
-  name?: string | null
-}
-
-export function DashboardHeader({ avatarUrl, name }: DashboardHeaderProps) {
+export function DashboardHeader() {
   return (
     <header className="border-b-4 border-black bg-card shadow-[0px_8px_0px_0px_rgba(0,0,0,1)]">
       <div className="container mx-auto px-4 py-4 max-w-7xl">
@@ -41,7 +46,39 @@ export function DashboardHeader({ avatarUrl, name }: DashboardHeaderProps) {
             </nav>
           </div>
 
-          <UserAvatar avatarUrl={avatarUrl} name={name} />
+          <DropdownMenu>
+            <DropdownMenuTrigger className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
+              <Avatar className="h-9 w-9 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition-all">
+                <AvatarImage src="/placeholder.svg?height=36&width=36" alt="ユーザー" />
+                <AvatarFallback className="bg-primary text-primary-foreground">田中</AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>マイアカウント</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>プロフィール</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>設定</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <form action={signOut} className="w-full">
+                  <button type="submit" className="flex w-full items-center text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>ログアウト</span>
+                  </button>
+                </form>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

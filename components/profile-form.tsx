@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { updateProfile, uploadAvatar, type Profile } from "@/app/profile/actions"
+import { updateProfile, type Profile } from "@/app/actions/profile"
 import { Upload, Loader2 } from "lucide-react"
+import { put } from "@vercel/blob"
 
 type ProfileFormProps = {
   profile: Profile | null
@@ -43,16 +44,12 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     setIsUploading(true)
 
     try {
-      const formData = new FormData()
-      formData.append("file", file)
+      // Vercel Blobにアップロード
+      const blob = await put(`avatars/${Date.now()}-${file.name}`, file, {
+        access: "public",
+      })
 
-      const result = await uploadAvatar(formData)
-
-      if (result.success && result.url) {
-        setAvatarUrl(result.url)
-      } else {
-        alert(result.error || "画像のアップロードに失敗しました")
-      }
+      setAvatarUrl(blob.url)
     } catch (error) {
       console.error("アップロードエラー:", error)
       alert("画像のアップロードに失敗しました")
