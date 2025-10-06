@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Trash2, Edit2, Plus } from "lucide-react"
 import { useEffect, useState, useCallback, memo } from "react"
+import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import {
   getCurrentWeekGoals,
@@ -17,6 +18,7 @@ import {
   type Plan,
   type Goal,
 } from "@/app/actions/goals"
+import { getProfile } from "@/app/profile/actions"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { CreateWeeklyGoalDialog } from "@/components/create-weekly-goal-dialog"
@@ -33,16 +35,39 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const [selectedPlan, setSelectedPlan] = useState<PlanWithGoal | null>(null)
   const [plans, setPlans] = useState<PlanWithGoal[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
+  const [weekStartDate, setWeekStartDate] = useState<string>("")
+  const router = useRouter()
   const { toast } = useToast()
 
-  const getWeekStartDate = useCallback(() => {
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-    const monday = new Date(now)
-    monday.setDate(now.getDate() + diff)
-    monday.setHours(0, 0, 0, 0)
-    return monday.toISOString().split("T")[0]
+  const calculateWeekStartDate = useCallback(async () => {
+    try {
+      const profile = await getProfile()
+      const weekStartDay = profile?.week_start_day || "monday"
+
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+
+      let diff: number
+      if (weekStartDay === "sunday") {
+        diff = -dayOfWeek
+      } else {
+        diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      }
+
+      const startDay = new Date(now)
+      startDay.setDate(now.getDate() + diff)
+      startDay.setHours(0, 0, 0, 0)
+      return startDay.toISOString().split("T")[0]
+    } catch (error) {
+      console.error("Failed to calculate week start date:", error)
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      const monday = new Date(now)
+      monday.setDate(now.getDate() + diff)
+      monday.setHours(0, 0, 0, 0)
+      return monday.toISOString().split("T")[0]
+    }
   }, [])
 
   const loadGoals = useCallback(async () => {
@@ -72,6 +97,14 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   }, [])
 
   useEffect(() => {
+    const initWeekStartDate = async () => {
+      const date = await calculateWeekStartDate()
+      setWeekStartDate(date)
+    }
+    initWeekStartDate()
+  }, [calculateWeekStartDate])
+
+  useEffect(() => {
     loadGoals()
     loadPlans()
 
@@ -89,14 +122,15 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const handleUpdateCurrentValue = async (id: string, currentValue: number) => {
     try {
       await updateWeeklyGoal(id, { current_value: currentValue })
-      setGoals(goals.map((goal) => (goal.id === id ? { ...goal, current_value: currentValue } : goal)))
+      router.refresh()
+      await loadGoals()
       setEditingGoal(null)
       toast({
         title: "更新しました",
         description: "進捗を更新しました",
       })
     } catch (error) {
-      console.error("[v0] Failed to update weekly goal:", error)
+      console.error("Failed to update weekly goal:", error)
       toast({
         title: "エラー",
         description: "進捗の更新に失敗しました",
@@ -108,13 +142,14 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
   const handleRemoveGoal = async (id: string) => {
     try {
       await deleteWeeklyGoal(id)
-      setGoals(goals.filter((goal) => goal.id !== id))
+      router.refresh()
+      await loadGoals()
       toast({
         title: "削除しました",
         description: "今週の目標を削除しました",
       })
     } catch (error) {
-      console.error("[v0] Failed to delete weekly goal:", error)
+      console.error("Failed to delete weekly goal:", error)
       toast({
         title: "エラー",
         description: "目標の削除に失敗しました",
@@ -193,10 +228,14 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       return
     }
 
-    // 最初のプランを選択
     setSelectedPlan(plans[0])
     setCreateDialogOpen(true)
   }
+
+  const handleGoalCreated = useCallback(async () => {
+    router.refresh()
+    await loadGoals()
+  }, [loadGoals, router])
 
   if (loading) {
     return (
@@ -342,13 +381,15 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
         </CardContent>
       </Card>
 
-      <CreateWeeklyGoalDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        plan={selectedPlan}
-        weekStartDate={getWeekStartDate()}
-        onSuccess={loadGoals}
-      />
+      {weekStartDate && (
+        <CreateWeeklyGoalDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          plan={selectedPlan}
+          weekStartDate={weekStartDate}
+          onSuccess={handleGoalCreated}
+        />
+      )}
     </>
   )
 })
