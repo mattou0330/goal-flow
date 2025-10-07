@@ -975,7 +975,7 @@ export async function addRecord(record: {
           quantityToAdd = record.quantity * 60
         }
 
-        const newCurrentValue = (weeklyGoalData.current_value || 0) + quantityToAdd
+        const newCurrentValue = Math.round(((weeklyGoalData.current_value || 0) + quantityToAdd) * 100) / 100
         const newStatus = newCurrentValue >= weeklyGoalData.target_value ? "completed" : "active"
 
         await supabase
@@ -1008,7 +1008,7 @@ export async function addRecord(record: {
         quantityToAdd = record.quantity * 60
       }
 
-      const newCurrentValue = (planData.current_value || 0) + quantityToAdd
+      const newCurrentValue = Math.round(((planData.current_value || 0) + quantityToAdd) * 100) / 100
 
       await supabase
         .from("plans")
@@ -1066,7 +1066,7 @@ export async function updateRecord(
         }
 
         const quantityDiff = newQuantity - oldQuantity
-        const newCurrentValue = (weeklyGoalData.current_value || 0) + quantityDiff
+        const newCurrentValue = Math.round(((weeklyGoalData.current_value || 0) + quantityDiff) * 100) / 100
         const newStatus = newCurrentValue >= weeklyGoalData.target_value ? "completed" : "active"
 
         await supabase
@@ -1103,7 +1103,7 @@ export async function updateRecord(
       }
 
       const quantityDiff = newQuantity - oldQuantity
-      const newCurrentValue = (planData.current_value || 0) + quantityDiff
+      const newCurrentValue = Math.round(((planData.current_value || 0) + quantityDiff) * 100) / 100
 
       await supabase
         .from("plans")
@@ -1149,7 +1149,10 @@ export async function deleteRecord(id: string) {
           quantityToSubtract = record.quantity * 60
         }
 
-        const newCurrentValue = Math.max(0, (weeklyGoalData.current_value || 0) - quantityToSubtract)
+        const newCurrentValue = Math.max(
+          0,
+          Math.round(((weeklyGoalData.current_value || 0) - quantityToSubtract) * 100) / 100,
+        )
         const newStatus = newCurrentValue >= weeklyGoalData.target_value ? "completed" : "active"
 
         await supabase
@@ -1182,7 +1185,7 @@ export async function deleteRecord(id: string) {
         quantityToSubtract = record.quantity * 60
       }
 
-      const newCurrentValue = Math.max(0, (planData.current_value || 0) - quantityToSubtract)
+      const newCurrentValue = Math.max(0, Math.round(((planData.current_value || 0) - quantityToSubtract) * 100) / 100)
 
       await supabase
         .from("plans")

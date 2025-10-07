@@ -133,7 +133,8 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
 
   const handleUpdateCurrentValue = async (id: string, currentValue: number) => {
     try {
-      await updateWeeklyGoal(id, { current_value: currentValue })
+      const roundedValue = Math.round(currentValue * 100) / 100
+      await updateWeeklyGoal(id, { current_value: roundedValue })
       router.refresh()
       await loadGoals()
       setEditingGoal(null)
@@ -290,6 +291,9 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
               const progress = goal.target_value > 0 ? (goal.current_value / goal.target_value) * 100 : 0
               const isEditing = editingGoal === goal.id
 
+              const displayCurrentValue = Math.round(goal.current_value * 10) / 10
+              const displayTargetValue = Math.round(goal.target_value * 10) / 10
+
               return (
                 <div
                   key={goal.id}
@@ -326,7 +330,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
                       <>
                         <Input
                           type="number"
-                          step="0.01"
+                          step="0.1"
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           className="h-7 w-16 text-xs text-center"
@@ -339,7 +343,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
                             }
                           }}
                         />
-                        <span className="text-xs text-muted-foreground">/ {goal.target_value}</span>
+                        <span className="text-xs text-muted-foreground">/ {displayTargetValue}</span>
                         {goal.plans.unit && <span className="text-xs text-muted-foreground">{goal.plans.unit}</span>}
                         <Button
                           variant="ghost"
@@ -356,7 +360,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
                     ) : (
                       <>
                         <span className="text-xs font-medium">
-                          {goal.current_value} / {goal.target_value}
+                          {displayCurrentValue} / {displayTargetValue}
                         </span>
                         {goal.plans.unit && <span className="text-xs text-muted-foreground">{goal.plans.unit}</span>}
                         <Button
