@@ -100,7 +100,8 @@ export const ActivePlans = memo(function ActivePlans() {
               </div>
               {plan.target_value && (
                 <div className="text-xs text-muted-foreground mt-2">
-                  目標: {plan.current_value || 0} / {plan.target_value} {plan.unit}
+                  目標: {Math.round((plan.current_value || 0) * 10) / 10} / {Math.round(plan.target_value * 10) / 10}{" "}
+                  {plan.unit}
                 </div>
               )}
             </div>

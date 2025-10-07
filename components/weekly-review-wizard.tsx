@@ -274,12 +274,12 @@ export function WeeklyReviewWizard() {
                           <span
                             className={`text-sm font-semibold ${isAchieved ? "text-accent" : "text-muted-foreground"}`}
                           >
-                            {goal.current_value}
+                            {Math.round(goal.current_value * 10) / 10}
                             {goal.plans.unit || "時間"}
                           </span>
                           <span className="text-sm text-muted-foreground">/</span>
                           <span className="text-sm text-muted-foreground">
-                            {goal.target_value}
+                            {Math.round(goal.target_value * 10) / 10}
                             {goal.plans.unit || "時間"}
                           </span>
                         </div>
