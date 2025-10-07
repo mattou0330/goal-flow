@@ -584,7 +584,6 @@ export async function getCurrentWeekGoals(weekOffset = 0) {
 
   const weekStartDay = settings?.week_start_day || "monday"
 
-  // 指定された週の開始日を計算
   const now = new Date()
   const dayOfWeek = now.getDay()
 
@@ -600,7 +599,16 @@ export async function getCurrentWeekGoals(weekOffset = 0) {
   monday.setDate(now.getDate() + diff + weekOffset * 7)
   monday.setHours(0, 0, 0, 0)
 
-  const weekStart = monday.toISOString().split("T")[0]
+  // toISOString()の代わりにローカルタイムゾーンで日付を文字列に変換
+  const year = monday.getFullYear()
+  const month = String(monday.getMonth() + 1).padStart(2, "0")
+  const day = String(monday.getDate()).padStart(2, "0")
+  const weekStart = `${year}-${month}-${day}`
+
+  console.log("[v0] Calculated week start date:", weekStart)
+  console.log("[v0] Current date:", now.toISOString())
+  console.log("[v0] Day of week:", dayOfWeek)
+  console.log("[v0] Week start day setting:", weekStartDay)
 
   const { data, error } = await supabase
     .from("weekly_goals")
@@ -618,7 +626,12 @@ export async function getCurrentWeekGoals(weekOffset = 0) {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
-  if (error) throw error
+  if (error) {
+    console.error("[v0] Error loading weekly goals:", error)
+    throw error
+  }
+
+  console.log("[v0] Loaded weekly goals:", data)
   return data as (WeeklyGoal & { plans: Plan })[]
 }
 

@@ -57,7 +57,14 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       const startDay = new Date(now)
       startDay.setDate(now.getDate() + diff)
       startDay.setHours(0, 0, 0, 0)
-      return startDay.toISOString().split("T")[0]
+
+      const year = startDay.getFullYear()
+      const month = String(startDay.getMonth() + 1).padStart(2, "0")
+      const day = String(startDay.getDate()).padStart(2, "0")
+      const weekStart = `${year}-${month}-${day}`
+
+      console.log("[v0] Client calculated week start date:", weekStart)
+      return weekStart
     } catch (error) {
       console.error("Failed to calculate week start date:", error)
       const now = new Date()
@@ -66,7 +73,11 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
       const monday = new Date(now)
       monday.setDate(now.getDate() + diff)
       monday.setHours(0, 0, 0, 0)
-      return monday.toISOString().split("T")[0]
+
+      const year = monday.getFullYear()
+      const month = String(monday.getMonth() + 1).padStart(2, "0")
+      const day = String(monday.getDate()).padStart(2, "0")
+      return `${year}-${month}-${day}`
     }
   }, [])
 
@@ -74,6 +85,7 @@ export const WeeklyGoals = memo(function WeeklyGoals() {
     try {
       setLoading(true)
       const data = await getCurrentWeekGoals()
+      console.log("[v0] Loaded weekly goals:", data)
       setGoals(data)
     } catch (error) {
       console.error("Failed to load weekly goals:", error)
