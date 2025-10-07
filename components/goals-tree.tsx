@@ -370,7 +370,8 @@ export const GoalsTree = memo(function GoalsTree({
                   <span className="text-xs text-muted-foreground flex-1">{plan.title}</span>
                   {plan.target_value && plan.unit && (
                     <span className="text-xs text-muted-foreground">
-                      {plan.current_value || 0}/{plan.target_value} {plan.unit}
+                      {Math.round((plan.current_value || 0) * 10) / 10}/{Math.round(plan.target_value * 10) / 10}{" "}
+                      {plan.unit}
                     </span>
                   )}
                 </div>

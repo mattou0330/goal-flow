@@ -677,7 +677,8 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
                 <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                   {plan.target_value && plan.unit && (
                     <span>
-                      目標: {plan.current_value || 0} / {plan.target_value} {plan.unit}
+                      目標: {Math.round((plan.current_value || 0) * 10) / 10} /{" "}
+                      {Math.round(plan.target_value * 10) / 10} {plan.unit}
                     </span>
                   )}
                   {plan.due_date && (
